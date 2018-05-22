@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<project name="lucidj-ladmin" default="deploy-all">
+
+    <import file="configure.xml"/>
+
+    <target name="build-kernel">
+        <subant buildpath="${basedir}/kernel"/>
+    </target>
+
+    <target name="build-stage">
+        <subant buildpath="${basedir}/stage-templates/lucidj-core-18.04"/>
+    </target>
+
+    <target name="build-all">
+        <iterate target="build-module"/>
+        <antcall target="build-kernel"/>
+    </target>
+
+    <target name="deploy-all">
+        <antcall target="build-all"/>
+        <antcall target="build-stage"/>
+    </target>
+
+    <target name="clean">
+        <iterate target="clean"/>
+    </target>
+
+</project>
