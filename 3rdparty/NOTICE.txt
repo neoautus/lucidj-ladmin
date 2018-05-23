@@ -1,0 +1,10 @@
+
+NOTICE
+======
+
+This software includes LGPL code from:
+
+o  BrowserLauncher2 (http://browserlaunch2.sourceforge.net), a great LGPL project from Markus 
+   Gebhard, Jeff Chapman. See more on their site above. See BrowserLauncher2/deployment/ for
+   more information.
+
