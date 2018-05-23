@@ -3,8 +3,11 @@
 
     <import file="configure.xml"/>
 
-    <target name="build-kernel">
-        <subant buildpath="${basedir}/kernel"/>
+    <target name="build-3rdparty">
+        <property name="3rdparty.dir" value="${basedir}/3rdparty"/>
+        <subant buildpath="${3rdparty.dir}/BrowserLauncher2">
+            <property name="output.dir" value="${build.dir}/BrowserLauncher2"/>
+        </subant>
     </target>
 
     <target name="build-stage">

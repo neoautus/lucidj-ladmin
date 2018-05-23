@@ -316,10 +316,11 @@ public class BrowserLauncherTestApp
         if (logger.isInfoEnabled()) {
             logger.info("kill browser button clicked");
         }
-        BrowserEvent[] browserEvents = browserCloser.getBrowserEvents();
-        if(browserEvents.length > 0) {
-            browserCloser.closeBrowser(browserEvents[0]);
-        }
+        logger.info("browserCloser not implemented");
+//        BrowserEvent[] browserEvents = browserCloser.getBrowserEvents();
+//        if(browserEvents.length > 0) {
+//            browserCloser.closeBrowser(browserEvents[0]);
+//        }
     }
 
     private void copyButton_actionPerformed(ActionEvent e) {
