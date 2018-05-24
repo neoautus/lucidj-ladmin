@@ -1,0 +1,83 @@
+<?xml version="1.0"?>
+<!--
+   Copyright 2018 NEOautus Ltd. (http://neoautus.com)
+
+   Licensed under the Apache License, Version 2.0 (the "License"); you may not
+   use this file except in compliance with the License. You may obtain a copy of
+   the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+   WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+   License for the specific language governing permissions and limitations under
+   the License.
+-->
+<project name="gui" default="build-gui">
+
+    <import>
+        <fileset dir="${basedir}" includes="configure.xml"/>
+        <fileset dir="${basedir}/.." includes="configure.xml"/>
+    </import>
+
+    <target name="getlibs" depends="configure.getlibs">
+
+        <resolvePath id="gui/commons-exec">
+            <dependency org="org.apache.commons" name="commons-exec" rev="1.3"/>
+        </resolvePath>
+
+        <path id="project-libs">
+            <pathelement path="${libcache.dir}/BrowserLauncher2"/>
+        </path>
+
+    </target>
+
+    <target name="build-module">
+        <!-- GUI isn't a module -->
+    </target>
+
+    <target name="build-gui" depends="init">
+
+        <echo message="Building GUI"/>
+
+        <property name="main-class" value="org.lucidj.ladmin.gui.Main"/>
+        <!--build.bundle symbolicName="LAdmin-GUI" version="1.0.0"
+            src="${basedir}/src"
+            outfileProperty="bundle.dist.jar" ipojo="false" defaultPathId="excludeDefault">
+            <classpaths>
+                <path refid="gui/commons-exec"/>
+                <path refid="project-libs"/>
+            </classpaths>
+        </build.bundle-->
+
+        <property name="src.dir" value="${basedir}/src"/>
+        <property name="gui.classes.dir" value="${build.dir}/gui"/>
+        <delete dir="${gui.classes.dir}" quiet="true"/>
+        <mkdir dir="${gui.classes.dir}"/>
+        <javac srcdir="${src.dir}" destdir="${gui.classes.dir}"
+               debug="${javac.debug}" debuglevel="${javac.debuglevel}" deprecation="${javac.deprecation}"
+               source="${javac.source}" target="${javac.target}" bootclasspath="${javac.bootclasspath}"
+               includeantruntime="false">
+            <classpath>
+                <path refid="gui/commons-exec"/>
+                <path refid="project-libs"/>
+            </classpath>
+        </javac>
+
+        <property name="dist.jar" value="${dist.dir}/ladmin.jar"/>
+        <jar destfile="${dist.jar}" filesonly="true">
+            <manifest>
+                <attribute name="Main-Class" value="${main-class}"/>
+            </manifest>
+            <fileset dir="${gui.classes.dir}" includes="**/*"/>
+            <fileset dir="${basedir}/resources" includes="**/*"/>
+            <zipgroupfileset dir="${libcache.dir}" includes="gui/commons-exec/jar/**/*.jar"/>
+            <fileset dir="${libcache.dir}/BrowserLauncher2" includes="**/*"/>
+        </jar>
+
+        <echo message="Generated: ${dist.jar}"/>
+
+    </target>
+
+</project>

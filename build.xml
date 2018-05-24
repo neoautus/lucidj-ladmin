@@ -1,4 +1,19 @@
 <?xml version="1.0"?>
+<!--
+   Copyright 2018 NEOautus Ltd. (http://neoautus.com)
+
+   Licensed under the Apache License, Version 2.0 (the "License"); you may not
+   use this file except in compliance with the License. You may obtain a copy of
+   the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+   WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+   License for the specific language governing permissions and limitations under
+   the License.
+-->
 <project name="lucidj-ladmin" default="deploy-all">
 
     <import file="configure.xml"/>
@@ -6,22 +21,23 @@
     <target name="build-3rdparty">
         <property name="3rdparty.dir" value="${basedir}/3rdparty"/>
         <subant buildpath="${3rdparty.dir}/BrowserLauncher2">
-            <property name="output.dir" value="${build.dir}/BrowserLauncher2"/>
+            <property name="output.dir" value="${libcache.dir}/BrowserLauncher2"/>
         </subant>
     </target>
 
-    <target name="build-stage">
-        <subant buildpath="${basedir}/stage-templates/lucidj-core-18.04"/>
+    <target name="build-gui">
+        <subant buildpath="${basedir}/gui"/>
     </target>
 
     <target name="build-all">
+        <antcall target="build-3rdparty"/>
         <iterate target="build-module"/>
-        <antcall target="build-kernel"/>
+        <antcall target="build-gui"/>
     </target>
 
     <target name="deploy-all">
         <antcall target="build-all"/>
-        <antcall target="build-stage"/>
+        <!--antcall target="build-stage"/-->
     </target>
 
     <target name="clean">
