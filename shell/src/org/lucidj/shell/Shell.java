@@ -20,8 +20,13 @@ import org.jline.terminal.Attributes;
 import org.jline.terminal.Terminal;
 import org.jline.terminal.TerminalBuilder;
 
-import java.io.*;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.Reader;
 import java.net.Socket;
+import java.net.SocketTimeoutException;
 
 public class Shell
 {
@@ -46,7 +51,7 @@ public class Shell
 
     static TelnetState telnet_state = TelnetState.LOOK_FOR_IAC;
     static int telnet_command;
-    static boolean IAC_DO_LOGOUT;
+    static boolean logout_terminal;
 
     private static DataInputStream socket_in;
     private static DataOutputStream socket_out;
@@ -61,10 +66,10 @@ public class Shell
             socket_out.write (IAC_CHAR);
             socket_out.write (CMD_SB);
             socket_out.write (31);
-            int term_width = terminal.getWidth();
+            int term_width = terminal.getWidth ();
             socket_out.write ((byte)(term_width >> 8));   // width hi
             socket_out.write ((byte)term_width);          // width lo
-            int term_height = terminal.getHeight();
+            int term_height = terminal.getHeight ();
             socket_out.write ((byte)(term_height >> 8));  // height hi
             socket_out.write ((byte)term_height);         // height lo
             socket_out.write (IAC_CHAR);
@@ -81,7 +86,7 @@ public class Shell
             socket_out.write (IAC_CHAR);
             socket_out.write (CMD_SB);
             socket_out.write (24);
-            socket_out.write (('\0' + terminal.getType().toLowerCase()).getBytes());
+            socket_out.write (('\0' + terminal.getType ().toLowerCase ()).getBytes ());
             socket_out.write (IAC_CHAR);
             socket_out.write (CMD_SE);
             socket_out.flush ();
@@ -202,7 +207,7 @@ public class Shell
                 {
                     case 0x12: // LOGOUT
                     {
-                        IAC_DO_LOGOUT = do_flag;
+                        logout_terminal = do_flag;
                         break;
                     }
                 }
@@ -223,6 +228,7 @@ public class Shell
         try
         {
             clientSocket = new Socket ("localhost", 6523);
+            clientSocket.setSoTimeout (100);
             socket_in = new DataInputStream (clientSocket.getInputStream ());
             socket_out = new DataOutputStream (clientSocket.getOutputStream ());
         }
@@ -250,6 +256,20 @@ public class Shell
                 }
             });
 
+            // We allow here to exit the terminal by using Ctrl+Z. The traditional method
+            // Ctrl+D still works. The Ctrl+Z is interesting because it avoids closing the
+            // shell window by accident when hitting Ctrl+D twice, or if you fail to notice
+            // that gogo is already closed (like I do sometimes).
+            terminal.handle (Terminal.Signal.TSTP, new Terminal.SignalHandler ()
+            {
+                @Override
+                public void handle (Terminal.Signal signal)
+                {
+                    terminal.writer ().println ();
+                    logout_terminal = true;
+                }
+            });
+
             trick_telnet_server ();
 
             Reader terminal_in = terminal.reader ();
@@ -258,13 +278,28 @@ public class Shell
 
             while (!clientSocket.isClosed ())
             {
-                int avail = socket_in.available ();
+                int bytes_read;
 
-                if (avail > 0)
+                try
                 {
-                    int count = socket_in.read (buffer);
+                    // Not very elegant, but reacts quickly to connection closed by host
+                    bytes_read = socket_in.read (buffer);
+                }
+                catch (SocketTimeoutException ignore)
+                {
+                    bytes_read = 0;
+                }
 
-                    for (int i = 0; i < count; i++)
+                if (bytes_read == -1)
+                {
+                    terminal.writer ().println ("\nConnection closed by server");
+                    terminal.flush ();
+                    break;
+                }
+
+                if (bytes_read > 0)
+                {
+                    for (int i = 0; i < bytes_read; i++)
                     {
                         int ch = telnet_filter (buffer[i] & 0x00ff);
 
@@ -275,41 +310,28 @@ public class Shell
                     }
                 }
 
-                if (IAC_DO_LOGOUT)
+                if (logout_terminal)
                 {
                     terminal.writer ().println ("\rLogout");
                     terminal.flush ();
                     break;
                 }
 
-                try
+                if (terminal_in.ready ())
                 {
-                    if (terminal_in.ready ())
-                    {
-                        int ch = terminal_in.read ();
+                    int ch = terminal_in.read ();
 
-                        if (ch >= 0)
+                    if (ch >= 0)
+                    {
+                        socket_out.write (ch);
+
+                        if (ch == '\r')
                         {
-                            socket_out.write (ch);
-
-                            if (ch == '\r')
-                            {
-                                // Make clear the CR intent by sending CR NUL
-                                socket_out.write (0);
-                            }
-                            socket_out.flush ();
+                            // Make clear the CR intent by sending CR NUL
+                            socket_out.write (0);
                         }
+                        socket_out.flush ();
                     }
-                }
-                catch (IOException e)
-                {
-                    if ("Stream closed".equals (e.getMessage ()))
-                    {
-                        terminal.writer ().println ("\nConnection closed by server");
-                        terminal.flush ();
-                        break;
-                    }
-                    throw (e);
                 }
             }
         }
