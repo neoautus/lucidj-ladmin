@@ -25,7 +25,71 @@ import java.net.Socket;
 
 public class Shell
 {
-    public static void trick_telnet_server (Terminal terminal, DataInputStream socket_in, DataOutputStream socket_out)
+    enum TelnetState
+    {
+        LOOK_FOR_IAC,
+        DISCARD_IF_NUL,
+        WAIT_FOR_COMMAND,
+        WAIT_FOR_OPTION
+    };
+
+    static final int SKIP_CHAR = -1;
+    static final int CR_CHAR  = 0x0d;
+    static final int IAC_CHAR = 0xff;  // 255
+    static final int CMD_DONT = 0xfe;  // 254
+    static final int CMD_DO   = 0xfd;  // 253
+    static final int CMD_WONT = 0xfc;  // 252
+    static final int CMD_WILL = 0xfb;  // 251
+    static final int CMD_SB   = 0xfa;  // 250
+    static final int CMD_SE   = 0xf0;  // 240
+    static final int CMD_IS   = 0x00;  // 0
+
+    static TelnetState telnet_state = TelnetState.LOOK_FOR_IAC;
+    static int telnet_command;
+    static boolean IAC_DO_LOGOUT;
+
+    private static DataInputStream socket_in;
+    private static DataOutputStream socket_out;
+    private static Terminal terminal = null;
+    private static Attributes saved_attributes = null;
+    private static byte[] buffer = new byte [1024];
+
+    private static void send_terminal_size ()
+    {
+        try
+        {
+            socket_out.write (IAC_CHAR);
+            socket_out.write (CMD_SB);
+            socket_out.write (31);
+            int term_width = terminal.getWidth();
+            socket_out.write ((byte)(term_width >> 8));   // width hi
+            socket_out.write ((byte)term_width);          // width lo
+            int term_height = terminal.getHeight();
+            socket_out.write ((byte)(term_height >> 8));  // height hi
+            socket_out.write ((byte)term_height);         // height lo
+            socket_out.write (IAC_CHAR);
+            socket_out.write (CMD_SE);
+            socket_out.flush ();
+        }
+        catch (IOException ignore) {};
+    }
+
+    private static void send_terminal_type ()
+    {
+        try
+        {
+            socket_out.write (IAC_CHAR);
+            socket_out.write (CMD_SB);
+            socket_out.write (24);
+            socket_out.write (('\0' + terminal.getType().toLowerCase()).getBytes());
+            socket_out.write (IAC_CHAR);
+            socket_out.write (CMD_SE);
+            socket_out.flush ();
+        }
+        catch (IOException ignore) {};
+    }
+
+    private static void trick_telnet_server ()
         throws IOException
     {
         // Ugly but effective(tm)
@@ -33,79 +97,67 @@ public class Shell
         // [1] Server -> Client
         byte[] server_req1 =
         {
-            (byte)0xFF, (byte)0xFB, 0x01,
-            (byte)0xFF, (byte)0xFE, 0x01,
-            (byte)0xFF, (byte)0xFD, 0x1F,
-            (byte)0xFF, (byte)0xFB, 0x03,
-            (byte)0xFF, (byte)0xFD, 0x03,
-            (byte)0xFF, (byte)0xFD, 0x18,
-            (byte)0xFF, (byte)0xFD, 0x27
+            (byte)0xFF, (byte)0xFB, 0x01,   // SERVER IAC WILL 1 (ECHO)
+            (byte)0xFF, (byte)0xFE, 0x01,   // SERVER IAC DONT 1 (ECHO)
+            (byte)0xFF, (byte)0xFD, 0x1F,   // SERVER IAC DO 31 (NAWS)
+            (byte)0xFF, (byte)0xFB, 0x03,   // SERVER IAC WILL 3 (SGA)
+            (byte)0xFF, (byte)0xFD, 0x03,   // SERVER IAC DO 3 (SGA)
+            (byte)0xFF, (byte)0xFD, 0x18,   // SERVER IAC DO 24 (TTYPE)
+            (byte)0xFF, (byte)0xFD, 0x27    // SERVER IAC DO 39 (NEW-ENVIRON)
         };
-
-        byte[] buffer = new byte [80];
         socket_in.readFully (buffer, 0, server_req1.length);
-
-        int term_width = terminal.getWidth();
-        byte width_hi = (byte)(term_width >> 8);
-        byte width_lo = (byte)term_width;
-        int term_height = terminal.getHeight();
-        byte height_hi = (byte)(term_height >> 8);
-        byte height_lo = (byte)term_height;
 
         // [2] Client -> Server
         byte[] client_resp1 =
         {
-            (byte)0xFF, (byte)0xFD, 0x01,
-            (byte)0xFF, (byte)0xFB, 0x1F,
-            (byte)0xFF, (byte)0xFA, 0x1F, width_hi, width_lo, height_hi, height_lo, (byte)0xFF, (byte)0xF0,
-            (byte)0xFF, (byte)0xFD, 0x03,
-            (byte)0xFF, (byte)0xFB, 0x03,
-            (byte)0xFF, (byte)0xFB, 0x18,
-            (byte)0xFF, (byte)0xFB, 0x27
+            (byte)0xFF, (byte)0xFD, 0x01,   // CLIENT IAC DO 1 (ECHO)
+            (byte)0xFF, (byte)0xFB, 0x1F,   // CLIENT IAC WILL 31 (NAWS)
+            (byte)0xFF, (byte)0xFD, 0x03,   // CLIENT IAC DO 3 (SGA)
+            (byte)0xFF, (byte)0xFB, 0x03,   // CLIENT IAC WILL 3 (SGA)
+            (byte)0xFF, (byte)0xFB, 0x18,   // CLIENT IAC WILL 24 (TTYPE)
+            (byte)0xFF, (byte)0xFB, 0x27    // CLIENT IAC WILL 39 (NEW-ENVIRON)
         };
-
         socket_out.write (client_resp1, 0, client_resp1.length);
         socket_out.flush ();
+        send_terminal_size();               // CLIENT SUB 31 (NAWS) [4 bytes]
 
         // [3] Server -> Client
         byte[] server_req2 =
         {
+            // SERVER SUB 24 (TTYPE) [1 bytes]:  [<0x01>]
             (byte)0xFF, (byte)0xFA, 0x18, 0x01, (byte)0xFF, (byte)0xF0,
+
+            // SERVER SUB 39 (NEW-ENVIRON) [3 bytes]:  [<0x01><0x00><0x03>]
             (byte)0xFF, (byte)0xFA, 0x27, 0x01, 0x00, 0x03, (byte)0xFF, (byte)0xF0
         };
-
         socket_in.readFully (buffer, 0, server_req2.length);
 
         // [4] Client -> Server
         byte[] client_resp2 =
-        {                                      /* x     t     e     r     m */
-            (byte)0xFF, (byte)0xFA, 0x18, 0x00, 0x78, 0x74, 0x65, 0x72, 0x6D, (byte)0xFF, (byte)0xF0,
+        {
+            // CLIENT SUB 39 (NEW-ENVIRON) [1 bytes]:  [<0x00>]
             (byte)0xFF, (byte)0xFA, 0x27, 0x00, (byte)0xFF, (byte)0xF0
         };
-
         socket_out.write (client_resp2, 0, client_resp2.length);
         socket_out.flush ();
+        send_terminal_type ();              // CLIENT SUB 24 (TTYPE) [variable]
     }
-
-    enum TelnetState
-    {
-        LOOK_FOR_IAC,
-        WAIT_FOR_COMMAND,
-        WAIT_FOR_OPTION
-    };
-
-    static final int SKIP_CHAR = -1;
-    static final int IAC_CHAR = 0xff;
-    static final int CMD_DONT = 0xfe;
-    static final int CMD_DO = 0xfd;
-    static TelnetState telnet_state = TelnetState.LOOK_FOR_IAC;
-    static int telnet_command;
-    static boolean IAC_DO_LOGOUT;
 
     public static int telnet_filter (int ch)
     {
         switch (telnet_state)
         {
+            case DISCARD_IF_NUL:
+            {
+                if (ch == 0)
+                {
+                    // Discard the NUL and get back to normal processing
+                    telnet_state = TelnetState.LOOK_FOR_IAC;
+                    ch = SKIP_CHAR;
+                    break;
+                }
+                // Fall through
+            }
             case LOOK_FOR_IAC:
             {
                 if (ch == IAC_CHAR)
@@ -113,6 +165,11 @@ public class Shell
                     // Discard IAC char and wait for the command
                     telnet_state = TelnetState.WAIT_FOR_COMMAND;
                     ch = SKIP_CHAR;
+                }
+                else if (ch == CR_CHAR)
+                {
+                    // We should discard a NUL following a CR
+                    telnet_state = TelnetState.DISCARD_IF_NUL;
                 }
                 break;
             }
@@ -162,8 +219,6 @@ public class Shell
     public static void main (String[] args)
     {
         Socket clientSocket;
-        DataInputStream socket_in;
-        DataOutputStream socket_out;
 
         try
         {
@@ -177,32 +232,29 @@ public class Shell
             return;
         }
 
-        Attributes saved_attributes = null;
-        Terminal terminal = null;
-
         try
         {
             terminal = TerminalBuilder.builder ()
-                .name("gogo")
-                .system(true)
-                .nativeSignals(true)
-                //.signalHandler(Terminal.SignalHandler.SIG_IGN)
-                .build();
+                .name ("gogo")
+                .system (true)
+                .nativeSignals (true)
+                .signalHandler (Terminal.SignalHandler.SIG_IGN)
+                .build ();
 
-            //System.out.println ("Terminal type: " + terminal.getType ());
+            terminal.handle (Terminal.Signal.WINCH, new Terminal.SignalHandler ()
+            {
+                @Override
+                public void handle (Terminal.Signal signal)
+                {
+                    send_terminal_size ();
+                }
+            });
 
-            trick_telnet_server(terminal, socket_in, socket_out);
+            trick_telnet_server ();
 
             Reader terminal_in = terminal.reader ();
             OutputStream terminal_out = terminal.output ();
-
-//                CommandSession session = processor.createSession(terminal_in, terminal_out, terminal_out);
-//                session.put(Shell.VAR_CONTEXT, context);
-//                session.put(Shell.VAR_TERMINAL, terminal);
-
-            saved_attributes = terminal.enterRawMode();
-
-            byte[] buffer = new byte [1024];
+            saved_attributes = terminal.enterRawMode ();
 
             while (!clientSocket.isClosed ())
             {
@@ -218,20 +270,21 @@ public class Shell
 
                         if (ch != -1)
                         {
-                            terminal_out.write(ch);
+                            terminal_out.write (ch);
                         }
                     }
                 }
 
                 if (IAC_DO_LOGOUT)
                 {
-                    terminal_out.write("\rLogout\n".getBytes());
+                    terminal.writer ().println ("\rLogout");
+                    terminal.flush ();
                     break;
                 }
 
                 try
                 {
-                    if (terminal_in.ready())
+                    if (terminal_in.ready ())
                     {
                         int ch = terminal_in.read ();
 
@@ -241,17 +294,19 @@ public class Shell
 
                             if (ch == '\r')
                             {
+                                // Make clear the CR intent by sending CR NUL
                                 socket_out.write (0);
                             }
-
                             socket_out.flush ();
                         }
                     }
                 }
                 catch (IOException e)
                 {
-                    if ("Stream closed".equals(e.getMessage()))
+                    if ("Stream closed".equals (e.getMessage ()))
                     {
+                        terminal.writer ().println ("\nConnection closed by server");
+                        terminal.flush ();
                         break;
                     }
                     throw (e);
@@ -260,13 +315,23 @@ public class Shell
         }
         catch (Exception wtf)
         {
-            wtf.printStackTrace();
+            terminal.writer ().println ("\n" + wtf.toString());
+            terminal.flush ();
         }
         finally
         {
-            if (terminal != null && saved_attributes != null)
+            if (terminal != null)
             {
-                terminal.setAttributes (saved_attributes);
+                if (saved_attributes != null)
+                {
+                    terminal.setAttributes (saved_attributes);
+                }
+
+                try
+                {
+                    terminal.close ();
+                }
+                catch (IOException ignore) {};
             }
         }
     }
