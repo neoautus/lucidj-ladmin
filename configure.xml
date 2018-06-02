@@ -31,6 +31,7 @@
 
     <dirname property="configure.dir" file="${ant.file.configure}"/>
     <property name="cache.dir" value="${configure.dir}/cache"/>
+    <property name="artifacts.dir" value="${configure.dir}/build/artifacts"/>
     <property name="libcache.dir" value="${cache.dir}/lib"/>
     <property name="tmp.dir" value="${cache.dir}/tmp"/>
 
@@ -295,6 +296,15 @@
                     </if>
                 </else>
             </if>
+        </sequential>
+    </macrodef>
+
+    <macrodef name="artifact">
+        <attribute name="file"/>
+        <attribute name="group" default="default"/>
+        <sequential>
+            <mkdir dir="${artifacts.dir}/@{group}" taskname="artifact"/>
+            <copy file="@{file}" todir="${artifacts.dir}/@{group}" overwrite="true" taskname="artifact"/>
         </sequential>
     </macrodef>
 
