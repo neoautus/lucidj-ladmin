@@ -17,6 +17,7 @@
 package org.lucidj.ladmin.main;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.*;
@@ -25,12 +26,18 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.jar.Attributes;
+import java.util.jar.JarEntry;
+import java.util.jar.JarInputStream;
+import java.util.jar.Manifest;
 import java.util.stream.Stream;
 
 public class Main
 {
     private final static String HANDLER_PREFIX = "embedded";
     private static URL root_jar_url;
+    private static List<URL> jar_libraries_list;
+    private static List<URL> jar_commands_list;
 
     static
     {
@@ -80,8 +87,9 @@ public class Main
 
         if (embedded_dir == null)
         {
+            // We return an empty list on error
             System.err.println ("Embedded " + dir + " not found");
-            return (null);
+            return (found_jars);
         }
 
         try (FileSystem jar_fs = FileSystems.newFileSystem (embedded_dir.toURI (), Collections.EMPTY_MAP))
@@ -90,8 +98,9 @@ public class Main
 
             if (embedded_dir_path == null)
             {
+                // We return an empty list on error
                 System.out.println ("Embedded " + dir + " not available");
-                return (null);
+                return (found_jars);
             }
             Stream<Path> walk = Files.walk (embedded_dir_path, 1);
 
@@ -123,47 +132,251 @@ public class Main
         }
         catch (URISyntaxException | IOException e)
         {
+            // Here we may have a serious issue, so we return null
             System.err.println ("Exception searching bundles on " + embedded_dir + ":" + e.toString());
             return (null);
         }
         return (found_jars);
     }
 
-    @SuppressWarnings ("unchecked")
-    public static void main (String[] args)
+    private static URL get_jar_by_name (String name)
     {
-        List<URL> jar_lib_list = locate_jars ("/libraries");
-        List<URL> jar_url_list = locate_jars ("/commands");
-        jar_url_list.addAll (jar_lib_list);
-        URL[] jar_url_array = jar_url_list.toArray (new URL [jar_url_list.size ()]);
-
-        for (URL url: jar_url_array)
+        for (URL url: jar_commands_list)
         {
-            System.out.println ("===> " + url.toString());
-        }
+            String jar_file_name = url.getFile ().toLowerCase ();
+            int dot_jar_index = jar_file_name.lastIndexOf (".jar");
 
-        URLClassLoader url_cld = new URLClassLoader (jar_url_array);
+            if (dot_jar_index == -1)
+            {
+                continue;
+            }
+
+            String jar_name = jar_file_name.substring (jar_file_name.lastIndexOf ('/') + 1, dot_jar_index);
+
+            System.out.println ("===> " + url.getFile() + " -> '" + jar_name + "'");
+
+            if (jar_name.equals (name))
+            {
+                System.out.println ("   > FOUND: " + url);
+                return (url);
+            }
+        }
+        return (null);
+    }
+
+    private static String search_main_class_by_name (ClassLoader classloader, URL jar_url, String class_name)
+    {
+        try (JarInputStream jar_is = new JarInputStream (jar_url.openStream()))
+        {
+            JarEntry jar_entry;
+
+            while ((jar_entry = jar_is.getNextJarEntry()) != null)
+            {
+                String entry_name = jar_entry.getName ();
+                System.out.println ("  -> " + entry_name);
+
+                int dot_class_index = entry_name.lastIndexOf (".class");
+
+                if (dot_class_index == -1)
+                {
+                    continue;
+                }
+
+                String short_class_name = entry_name.substring (entry_name.lastIndexOf ('/') + 1, dot_class_index);
+                String full_class_name = entry_name.substring (0, dot_class_index).replace ('/', '.');
+
+                if (!short_class_name.toLowerCase ().equals (class_name)
+                    && !full_class_name.toLowerCase ().equals (class_name))
+                {
+                    continue;
+                }
+
+                // We make great effor to keep embedded jars isolated, but we DON'T TRY
+                // to support multiple jars with the _same_ main class name. We would need
+                // to isolate the command jars during the search phase, which is overkill.
+                // The condition below will be true only if the class have a valid main().
+                if (get_jar_entry_point (classloader, full_class_name) != null)
+                {
+                    return (full_class_name);
+                }
+            }
+        }
+        catch (IOException e)
+        {
+            System.err.println ("Warning on " + jar_url.toString() + ": " + e.toString());
+        }
+        return (null);
+    }
+
+    private static Method get_jar_entry_point (ClassLoader classloader, String class_name)
+    {
         Class cls;
 
         try
         {
-            cls = url_cld.loadClass ("org.lucidj.shell.Shell");
-            System.out.println ("SHELL = " + cls);
-            Method method = cls.getMethod ("main", args.getClass());
-            method.setAccessible(true);
-            int mods = method.getModifiers();
-
-            if (method.getReturnType() != void.class || !Modifier.isStatic(mods) || !Modifier.isPublic(mods))
-            {
-                System.out.println ("Main entrypoint not found.");
-                return;
-            }
-
-            method.invoke (null, new Object[] { args });
+            cls = classloader.loadClass (class_name);
         }
-        catch (Exception e)
+        catch (ClassNotFoundException e)
         {
-            e.printStackTrace();
+            return (null);
+        }
+
+        System.out.println (" LOADED " + class_name + " = " + cls);
+
+        Method method;
+
+        try
+        {
+            method = cls.getMethod ("main", String[].class);
+        }
+        catch (NoSuchMethodException e)
+        {
+            return (null);
+        }
+
+        method.setAccessible(true);
+        int mods = method.getModifiers();
+
+        if (method.getReturnType () == void.class && Modifier.isStatic (mods) && Modifier.isPublic (mods))
+        {
+            System.out.println ("  => MAIN FOUND on " + class_name);
+            return (method);
+        }
+        return (null);
+    }
+
+    private static String get_jar_main_class (ClassLoader classloader, URL jar_url)
+    {
+        try (JarInputStream jar_is = new JarInputStream (jar_url.openStream ()))
+        {
+            Manifest jar_mf = jar_is.getManifest ();
+
+            if (jar_mf != null)
+            {
+                Attributes attrs = jar_mf.getMainAttributes ();
+                String main_class = attrs.getValue ("Main-Class");
+
+                System.out.println ("main_class = " + main_class);
+
+                if (get_jar_entry_point (classloader, main_class) != null)
+                {
+                    return (main_class);
+                }
+            }
+        }
+        catch (IOException ignore) {};
+        return (null);
+    }
+
+    public static void main (String[] args)
+    {
+        jar_libraries_list = locate_jars ("/libraries");
+        List<URL> plugins_cmd_list = locate_jars ("/plugins");
+        List<URL> internal_cmd_list = locate_jars ("/commands");
+
+        // Ensure no serious errors around
+        if (jar_libraries_list == null || plugins_cmd_list == null || internal_cmd_list == null)
+        {
+            // Abort - the error message was already printed
+            System.exit (1);
+        }
+
+        // Command plugins have search order precedence over the internal commands
+        jar_commands_list = new ArrayList<> (plugins_cmd_list);
+        jar_commands_list.addAll (internal_cmd_list);
+
+        // We create a classloader with all the jars for command lookup
+        List<URL> jar_full_list = new ArrayList<> (jar_libraries_list);
+        jar_full_list.addAll (jar_commands_list);
+        URL[] jar_full_array = jar_full_list.toArray (new URL [jar_full_list.size ()]);
+        ClassLoader full_classloader = new URLClassLoader (jar_full_array);
+
+        if (args.length == 0)
+        {
+            // We need to scan all command jars, looking for commands and print them
+            System.out.println ("TODO: Print command list and help");
+            System.exit (0);
+        }
+
+        // Extract the command we should run and shift the arguments
+        String command = args [0];
+        String[] command_args = Arrays.copyOfRange (args, 1, args.length);
+        System.out.println ("COMMAND: " + command);
+
+        // Heuristics
+        //
+        // 1) Try to find a self-executable jar with the same name as the command and NOT from LucidJ
+        //    -> Call the class specified in the manifest.mf
+        // 2) Try to find a self-executable jar with the same name as the command and from LucidJ
+        //    -> Call the class specified in the manifest.mf
+        // 3) Try to find any jar with class short name equal to command, with main(), and NOT from LucidJ
+        //    -> Call the found class main() directly
+        // 4) Try to find any jar with class short name equal to command, with main() and from LucidJ
+        //    -> Call the found class main() directly
+        //
+
+        //--------------------
+        // Search by jar name
+        //--------------------
+
+        URL command_jar_url = get_jar_by_name (command);
+        String command_main_class = null;
+
+        if (command_jar_url != null)
+        {
+            command_main_class = get_jar_main_class (full_classloader, command_jar_url);
+        }
+
+        //----------------------
+        // Search by class name
+        //----------------------
+
+        if (command_main_class == null)
+        {
+            for (URL jar_url: jar_commands_list)
+            {
+                if ((command_main_class = search_main_class_by_name (full_classloader, jar_url, command)) != null)
+                {
+                    command_jar_url = jar_url;
+                }
+            }
+        }
+
+        System.out.println ("command_jar_url = " + command_jar_url);
+        System.out.println ("command_class = " + command_main_class);
+
+        if (command_jar_url == null)
+        {
+            System.err.println ("Error: Command '" + command + "' not found");
+            return;
+        }
+
+        //------------------------------------------------------------------------
+        // Run main() with a classpath composed only of libraries and command jar
+        //------------------------------------------------------------------------
+
+        List<URL> jar_run_list = new ArrayList<> (jar_libraries_list);
+        jar_run_list.add (0, command_jar_url);
+        URL[] jar_run_array = jar_run_list.toArray (new URL [jar_run_list.size ()]);
+        URLClassLoader run_classloader = new URLClassLoader (jar_run_array);
+        Method main = get_jar_entry_point (run_classloader, command_main_class);
+
+        if (main == null)
+        {
+            System.exit (1);
+        }
+
+        // TODO: LOG LOOKUP TIME UNTIL THIS POINT
+        System.out.println ("Method main = " + main);
+
+        try
+        {
+            main.invoke (null, new Object[] { command_args });
+        }
+        catch (InvocationTargetException | IllegalAccessException e)
+        {
+            System.err.println ("Exception calling main(): " + e.toString());
+            System.exit (1);
         }
     }
 }
