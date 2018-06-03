@@ -45,8 +45,12 @@
             <manifest>
                 <attribute name="Main-Class" value="org.lucidj.shell.Shell"/>
             </manifest>
-            <zipgroupfileset dir="${libcache.dir}" includes="shell/libs/jar/**/*.jar"/>
+            <!--zipgroupfileset dir="${libcache.dir}" includes="shell/libs/jar/**/*.jar"/-->
         </jar>
+
+        <artifact file="${libcache.dir}/shell/libs/jar/jansi-1.16.jar" group="libraries"/>
+        <artifact file="${libcache.dir}/shell/libs/jar/jline-3.5.1.jar" group="libraries"/>
+        <artifact file="${dist.shell.jar}" group="commands"/>
 
     </target>
 
