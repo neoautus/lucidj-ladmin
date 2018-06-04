@@ -16,6 +16,9 @@
 
 package org.lucidj.ladmin;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
 public class TinyLog
 {
     public final static int LOG_OFF   = 0;
@@ -23,12 +26,16 @@ public class TinyLog
     public final static int LOG_WARN  = 2;
     public final static int LOG_INFO  = 3;
     public final static int LOG_DEBUG = 4;
+    public final static int LOG_TRACE = 5;
+    private final static int default_logger_level = LOG_ERROR;
 
     public final static String[] LOG_LEVELS =
     {
-        "OFF", "ERROR", "WARN", "INFO", "DEBUG"
+        "OFF", "ERROR", "WARN", "INFO", "DEBUG", "TRACE"
     };
 
+    private SimpleDateFormat timestamp_format_info = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss ");
+    private SimpleDateFormat timestamp_format_debug = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss.SSS ");
     private int logger_level = 4;
     private String logger_name = "";
 
@@ -38,28 +45,31 @@ public class TinyLog
         logger_level = getConfiguredLogLevel (logger_name);
     }
 
+    public void setLogLevel (int level)
+    {
+        logger_level = level;
+    }
+
     public static int getConfiguredLogLevel (String logger_name)
     {
         String tinylog_env_default = System.getenv ("TINYLOG");
         String tinylog_default = System.getProperty ("tinylog",
-            tinylog_env_default == null? LOG_LEVELS[LOG_INFO]: tinylog_env_default);
-        String tinylog_property = System.getProperty ("tinylog_" + logger_name, tinylog_default).toUpperCase();
+            tinylog_env_default == null? LOG_LEVELS[default_logger_level]: tinylog_env_default);
+        String tinylog_property = System.getProperty ("tinylog_" + logger_name, tinylog_default).toUpperCase ();
 
         if (logger_name == null)
         {
-            return (LOG_INFO);
+            return (default_logger_level);
         }
 
         for (int level = 0; level < LOG_LEVELS.length; level++)
         {
-            if (LOG_LEVELS[level].equals (tinylog_property))
+            if (LOG_LEVELS [level].equals (tinylog_property))
             {
                 return (level);
             }
         }
-
-        // The log is disabled by default
-        return (LOG_OFF);
+        return (default_logger_level);
     }
 
     private String conv_str (Object obj)
@@ -86,7 +96,25 @@ public class TinyLog
         return (obj.toString ());
     }
 
-    private void write_log (int level, String msg, Object... args)
+    public StackTraceElement get_location ()
+    {
+        final String logger_class = TinyLog.class.getName ();
+        final StackTraceElement[] stackTrace = new Throwable().getStackTrace();
+
+        StackTraceElement last = null;
+
+        for (int i = stackTrace.length - 1; i > 0; i--)
+        {
+            if (logger_class.equals (stackTrace [i].getClassName()))
+            {
+                return (last);
+            }
+            last = stackTrace [i];
+        }
+        return (null);
+    }
+
+    public void log (int level, String msg, Object... args)
     {
         if (level > logger_level)
         {
@@ -99,10 +127,40 @@ public class TinyLog
         }
 
         StringBuilder sb = new StringBuilder ();
-        sb.append ("[");
-        sb.append (logger_name);
-        sb.append ("] ");
+
+        if (logger_level > LOG_INFO)
+        {
+            sb.append (timestamp_format_debug.format (new Date ()));
+        }
+        else
+        {
+            sb.append (timestamp_format_info.format (new Date ()));
+        }
         sb.append (LOG_LEVELS[level]);
+        sb.append (' ');
+
+        StackTraceElement loc = get_location ();
+
+        if (logger_level > LOG_INFO && loc != null && loc.getFileName () != null)
+        {
+            sb.append (loc.getFileName ());
+
+            if (loc.getLineNumber () > 0)
+            {
+                sb.append (':');
+                sb.append (loc.getLineNumber ());
+            }
+        }
+        else
+        {
+            sb.append (logger_name);
+        }
+
+        if (logger_level > LOG_INFO && loc != null && loc.getMethodName () != null)
+        {
+            sb.append ('.');
+            sb.append (loc.getMethodName ());
+        }
         sb.append (": ");
         sb.append (msg);
 
@@ -115,24 +173,29 @@ public class TinyLog
         System.out.println (sb.toString ());
     }
 
+    public void trace (String msg, Object... args)
+    {
+        log (LOG_TRACE, msg, args);
+    }
+
     public void debug (String msg, Object... args)
     {
-        write_log (LOG_DEBUG, msg, args);
+        log (LOG_DEBUG, msg, args);
     }
 
     public void info (String msg, Object... args)
     {
-        write_log (LOG_INFO, msg, args);
+        log (LOG_INFO, msg, args);
     }
 
     public void warn (String msg, Object... args)
     {
-        write_log (LOG_WARN, msg, args);
+        log (LOG_WARN, msg, args);
     }
 
     public void error (String msg, Object... args)
     {
-        write_log (LOG_ERROR, msg, args);
+        log (LOG_ERROR, msg, args);
     }
 }
 
