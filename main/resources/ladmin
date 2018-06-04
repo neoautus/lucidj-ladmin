@@ -30,10 +30,6 @@ elif [ -e "$SCRIPTDIR/../jdk/bin/java" ]; then
     java="$JAVA_HOME/bin/java"
 fi
 
-echo "OS_TYPE=$OS_TYPE"
-echo "java=$java"
-echo "SCRIPTPATH=$SCRIPTPATH"
-
 exec "$java" -jar "$SCRIPTPATH" "$@"
 exit 1
 
