@@ -54,7 +54,23 @@
             <fileset dir="${artifacts.dir}" includes="libraries/*"/>
         </jar>
 
-        <echo message="Generated: ${dist.jar}"/>
+        <property name="fancy-launcher" value="${dist.dir}/ladmin"/>
+        <echo message="Creating ${fancy-launcher}"/>
+        <copy file="${basedir}/resources/ladmin" overwrite="true"
+              tofile="${fancy-launcher}" >
+            <filterchain>
+                <!--replacetokens >
+                    <token key="MAINCLASS" value="${main.class}"/>
+                </replacetokens-->
+                <fixcrlf eol="lf" eof="remove" fixlast="true"/>
+            </filterchain>
+        </copy>
+        <concat destfile="${fancy-launcher}"  append="yes" binary="true" force="yes">
+            <fileset file="${dist.jar}"/>
+        </concat>
+        <chmod file="${fancy-launcher}" perm="a+x"/>
+
+        <copy file="${basedir}/resources/ladmin.png" todir="${dist.dir}"/>
 
     </target>
 
