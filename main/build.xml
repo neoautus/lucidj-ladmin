@@ -21,6 +21,14 @@
         <fileset dir="${basedir}/.." includes="configure.xml"/>
     </import>
 
+    <target name="getlibs" depends="configure.getlibs">
+
+        <path id="project-libs">
+            <fileset dir="${artifacts.dir}" includes="libraries/**/*.jar"/>
+        </path>
+
+    </target>
+
     <target name="build-module">
         <!-- GUI isn't a module -->
     </target>
@@ -36,12 +44,11 @@
         <javac srcdir="${src.dir}" destdir="${main.classes.dir}"
                debug="${javac.debug}" debuglevel="${javac.debuglevel}" deprecation="${javac.deprecation}"
                source="${javac.source}" target="${javac.target}" bootclasspath="${javac.bootclasspath}"
-               includeantruntime="false"/>
-            <!--classpath>
-                <path refid="gui/commons-exec"/>
+               includeantruntime="false">
+            <classpath>
                 <path refid="project-libs"/>
             </classpath>
-        </javac-->
+        </javac>
 
         <property name="dist.jar" value="${dist.dir}/ladmin.jar"/>
         <delete file="${dist.jar}"/>
@@ -52,6 +59,7 @@
             <fileset dir="${main.classes.dir}" includes="**/*"/>
             <fileset dir="${artifacts.dir}" includes="commands/*"/>
             <fileset dir="${artifacts.dir}" includes="libraries/*"/>
+            <zipgroupfileset dir="${artifacts.dir}" includes="libraries/libladmin.jar"/>
         </jar>
 
         <property name="fancy-launcher" value="${dist.dir}/ladmin"/>

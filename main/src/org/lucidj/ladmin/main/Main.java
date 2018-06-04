@@ -16,6 +16,8 @@
 
 package org.lucidj.ladmin.main;
 
+import org.lucidj.ladmin.TinyLog;
+
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -25,6 +27,8 @@ import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.*;
 import java.util.jar.Attributes;
 import java.util.jar.JarEntry;
@@ -34,6 +38,8 @@ import java.util.stream.Stream;
 
 public class Main
 {
+    private final static TinyLog log = new TinyLog (Main.class);
+
     private final static String HANDLER_PREFIX = "embedded";
     private static URL root_jar_url;
     private static List<URL> jar_libraries_list;
@@ -68,7 +74,7 @@ public class Main
                     protected URLConnection openConnection (URL url)
                         throws IOException
                     {
-                        //System.out.println ("--- openConnection: " + url);
+                        log.trace ("URLStreamHandler->openConnection: {}", url);
                         return (new URL ("jar:" + root_jar_url + "!" + url.getPath ()).openConnection ());
                     }
                 });
@@ -78,8 +84,15 @@ public class Main
 
     static List<URL> locate_jars (String dir)
     {
+        // These jars are NOT optional
+        return (locate_jars (dir, false));
+    }
+
+    static List<URL> locate_jars (String dir, boolean optional)
+    {
         URL embedded_dir = Main.class.getResource (dir);
         List<URL> found_jars = new ArrayList<> ();
+        int log_level = optional? TinyLog.LOG_INFO: TinyLog.LOG_ERROR;
 
         //---------------------------
         // Locate dir inside our jar
@@ -88,8 +101,8 @@ public class Main
         if (embedded_dir == null)
         {
             // We return an empty list on error
-            System.err.println ("Embedded " + dir + " not found");
-            return (found_jars);
+            log.log (log_level, "Embedded directory {} not found", dir);
+            return (optional? found_jars: null);
         }
 
         try (FileSystem jar_fs = FileSystems.newFileSystem (embedded_dir.toURI (), Collections.EMPTY_MAP))
@@ -99,8 +112,8 @@ public class Main
             if (embedded_dir_path == null)
             {
                 // We return an empty list on error
-                System.out.println ("Embedded " + dir + " not available");
-                return (found_jars);
+                log.log (log_level, "Embedded directory {} not available", dir);
+                return (optional? found_jars: null);
             }
             Stream<Path> walk = Files.walk (embedded_dir_path, 1);
 
@@ -125,7 +138,7 @@ public class Main
                     }
                     catch (MalformedURLException e)
                     {
-                        System.err.println ("Exception mapping " + embedded_jar.getFileName() + ":" + e.toString());
+                        log.warn ("Exception mapping {}: {}", embedded_jar.getFileName(), e.toString());
                     }
                 }
             }
@@ -133,8 +146,8 @@ public class Main
         catch (URISyntaxException | IOException e)
         {
             // Here we may have a serious issue, so we return null
-            System.err.println ("Exception searching bundles on " + embedded_dir + ":" + e.toString());
-            return (null);
+            log.log (log_level, "Exception searching bundles on {}: {}", embedded_dir, e.toString());
+            return (optional? found_jars: null);
         }
         return (found_jars);
     }
@@ -153,11 +166,11 @@ public class Main
 
             String jar_name = jar_file_name.substring (jar_file_name.lastIndexOf ('/') + 1, dot_jar_index);
 
-            System.out.println ("===> " + url.getFile() + " -> '" + jar_name + "'");
+            log.debug ("url file={} jar_name={}", url.getFile(), jar_name);
 
             if (jar_name.equals (name))
             {
-                System.out.println ("   > FOUND: " + url);
+                log.debug ("name={} found {}", name, url);
                 return (url);
             }
         }
@@ -166,6 +179,8 @@ public class Main
 
     private static String search_main_class_by_name (ClassLoader classloader, URL jar_url, String class_name)
     {
+        log.debug ("jar_url={} class_name={}", jar_url, class_name);
+
         try (JarInputStream jar_is = new JarInputStream (jar_url.openStream()))
         {
             JarEntry jar_entry;
@@ -173,17 +188,19 @@ public class Main
             while ((jar_entry = jar_is.getNextJarEntry()) != null)
             {
                 String entry_name = jar_entry.getName ();
-                System.out.println ("  -> " + entry_name);
 
                 int dot_class_index = entry_name.lastIndexOf (".class");
 
                 if (dot_class_index == -1)
                 {
+                    // Skip non-class files
                     continue;
                 }
 
                 String short_class_name = entry_name.substring (entry_name.lastIndexOf ('/') + 1, dot_class_index);
                 String full_class_name = entry_name.substring (0, dot_class_index).replace ('/', '.');
+                log.debug ("Verifying {} -> {} / {}",
+                    entry_name, short_class_name, full_class_name);
 
                 if (!short_class_name.toLowerCase ().equals (class_name)
                     && !full_class_name.toLowerCase ().equals (class_name))
@@ -197,13 +214,14 @@ public class Main
                 // The condition below will be true only if the class have a valid main().
                 if (get_jar_entry_point (classloader, full_class_name) != null)
                 {
+                    log.debug ("Found {}", full_class_name);
                     return (full_class_name);
                 }
             }
         }
         catch (IOException e)
         {
-            System.err.println ("Warning on " + jar_url.toString() + ": " + e.toString());
+            log.warn ("Exception on {}: {}", jar_url.toString(), e.toString());
         }
         return (null);
     }
@@ -211,6 +229,7 @@ public class Main
     private static Method get_jar_entry_point (ClassLoader classloader, String class_name)
     {
         Class cls;
+        Method method;
 
         try
         {
@@ -221,9 +240,7 @@ public class Main
             return (null);
         }
 
-        System.out.println (" LOADED " + class_name + " = " + cls);
-
-        Method method;
+        log.debug ("Loaded {}", cls);
 
         try
         {
@@ -239,7 +256,7 @@ public class Main
 
         if (method.getReturnType () == void.class && Modifier.isStatic (mods) && Modifier.isPublic (mods))
         {
-            System.out.println ("  => MAIN FOUND on " + class_name);
+            log.debug ("Valid main() found: {}", method);
             return (method);
         }
         return (null);
@@ -256,10 +273,9 @@ public class Main
                 Attributes attrs = jar_mf.getMainAttributes ();
                 String main_class = attrs.getValue ("Main-Class");
 
-                System.out.println ("main_class = " + main_class);
-
                 if (get_jar_entry_point (classloader, main_class) != null)
                 {
+                    log.debug ("jar_url={} main_class={}", jar_url, main_class);
                     return (main_class);
                 }
             }
@@ -270,8 +286,10 @@ public class Main
 
     public static void main (String[] args)
     {
+        Instant start_timestamp = Instant.now ();
+
         jar_libraries_list = locate_jars ("/libraries");
-        List<URL> plugins_cmd_list = locate_jars ("/plugins");
+        List<URL> plugins_cmd_list = locate_jars ("/plugins", true);
         List<URL> internal_cmd_list = locate_jars ("/commands");
 
         // Ensure no serious errors around
@@ -301,7 +319,7 @@ public class Main
         // Extract the command we should run and shift the arguments
         String command = args [0];
         String[] command_args = Arrays.copyOfRange (args, 1, args.length);
-        System.out.println ("COMMAND: " + command);
+        log.debug ("Locating command '{}' inside {}", command, root_jar_url);
 
         // Heuristics
         //
@@ -342,8 +360,8 @@ public class Main
             }
         }
 
-        System.out.println ("command_jar_url = " + command_jar_url);
-        System.out.println ("command_class = " + command_main_class);
+        log.debug ("command_jar_url = {}", command_jar_url);
+        log.debug ("command_main_class = {}", command_main_class);
 
         if (command_jar_url == null)
         {
@@ -360,14 +378,16 @@ public class Main
         URL[] jar_run_array = jar_run_list.toArray (new URL [jar_run_list.size ()]);
         URLClassLoader run_classloader = new URLClassLoader (jar_run_array);
         Method main = get_jar_entry_point (run_classloader, command_main_class);
+        log.debug ("Will invoke method: {}", main);
 
         if (main == null)
         {
+            System.err.println ("Error: Valid main() not found on: " + command_main_class);
             System.exit (1);
         }
 
-        // TODO: LOG LOOKUP TIME UNTIL THIS POINT
-        System.out.println ("Method main = " + main);
+        long loading_time = Duration.between (start_timestamp, Instant.now ()).toMillis ();
+        log.info ("Loading time: {}ms", String.format ("%d.%03d", loading_time / 1000, loading_time % 1000));
 
         try
         {
