@@ -1,9 +1,7 @@
-build/*
-dist/*
 cache/*
 stage/*
-*/build/*
-*/dist/*
+**/build/*
+**/dist/*
 */cache/*
 */stage/*
 
