@@ -26,5 +26,6 @@
         <SOURCES />
       </library>
     </orderEntry>
+    <orderEntry type="library" scope="PROVIDED" name="Project Libraries" level="project" />
   </component>
 </module>

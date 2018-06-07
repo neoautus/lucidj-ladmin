@@ -25,6 +25,7 @@
 
         <path id="project-libs">
             <fileset dir="${artifacts.dir}" includes="libraries/**/*.jar"/>
+            <fileset dir="${artifacts.dir}" includes="shared/**/*.jar"/>
         </path>
 
     </target>
@@ -45,6 +46,7 @@
                debug="${javac.debug}" debuglevel="${javac.debuglevel}" deprecation="${javac.deprecation}"
                source="${javac.source}" target="${javac.target}" bootclasspath="${javac.bootclasspath}"
                includeantruntime="false">
+            <compilerarg line="${javac.optional}"/>
             <classpath>
                 <path refid="project-libs"/>
             </classpath>
@@ -59,7 +61,7 @@
             <fileset dir="${main.classes.dir}" includes="**/*"/>
             <fileset dir="${artifacts.dir}" includes="commands/*"/>
             <fileset dir="${artifacts.dir}" includes="libraries/*"/>
-            <zipgroupfileset dir="${artifacts.dir}" includes="libraries/libladmin.jar"/>
+            <zipgroupfileset dir="${artifacts.dir}" includes="shared/*.jar"/>
         </jar>
 
         <property name="fancy-launcher" value="${dist.dir}/ladmin"/>

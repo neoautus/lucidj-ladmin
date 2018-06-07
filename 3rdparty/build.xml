@@ -1,0 +1,44 @@
+<?xml version="1.0"?>
+<!--
+   Copyright 2018 NEOautus Ltd. (http://neoautus.com)
+
+   Licensed under the Apache License, Version 2.0 (the "License"); you may not
+   use this file except in compliance with the License. You may obtain a copy of
+   the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+   WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+   License for the specific language governing permissions and limitations under
+   the License.
+-->
+<project name="3rdparty" default="build-module">
+
+    <import>
+        <fileset dir="${basedir}" includes="configure.xml"/>
+        <fileset dir="${basedir}/.." includes="configure.xml"/>
+    </import>
+
+    <property name="browserlauncher2.dir" value="${basedir}/BrowserLauncher2"/>
+    <property name="dist.name" value="dist"/>
+    <property name="build.name" value="build"/>
+
+    <target name="build-module">
+        <subant buildpath="${browserlauncher2.dir}" target="deploy">
+            <property name="output.dir" value="${build.name}"/>
+            <property name="deployment.dir" value="${dist.name}"/>
+            <property name="app.manifest" value="deployment/manifest.mf"/>
+            <property name="app.manifest.test" value="deployment/manifest.test.mf"/>
+        </subant>
+        <artifact file="${browserlauncher2.dir}/${dist.name}/BrowserLauncher2-1_4.jar" group="libraries"/>
+    </target>
+
+    <target name="clean">
+        <subant buildpath="${browserlauncher2.dir}" target="clean">
+            <property name="output.dir" value="${build.name}"/>
+        </subant>
+    </target>
+
+</project>

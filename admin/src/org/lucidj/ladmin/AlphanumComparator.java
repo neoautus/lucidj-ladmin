@@ -22,7 +22,7 @@
  *
  */
 
-package org.lucidj.ladmin.gui;
+package org.lucidj.ladmin;
 
 import java.io.File;
 import java.util.Comparator;

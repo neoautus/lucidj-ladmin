@@ -16,7 +16,7 @@
 
 package org.lucidj.ladmin.main;
 
-import org.lucidj.ladmin.TinyLog;
+import org.lucidj.ladmin.shared.TinyLog;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
@@ -27,8 +27,6 @@ import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Duration;
-import java.time.Instant;
 import java.util.*;
 import java.util.jar.Attributes;
 import java.util.jar.JarEntry;
@@ -40,6 +38,7 @@ public class Main
 {
     private final static TinyLog log = new TinyLog (Main.class);
 
+    private final static String DEFAULT_PROG_NAME = "ladmin";
     private final static String HANDLER_PREFIX = "embedded";
     private static URL root_jar_url;
     private static List<URL> jar_libraries_list;
@@ -105,7 +104,7 @@ public class Main
             return (optional? found_jars: null);
         }
 
-        try (FileSystem jar_fs = FileSystems.newFileSystem (embedded_dir.toURI (), Collections.EMPTY_MAP))
+        try (FileSystem jar_fs = FileSystems.newFileSystem (embedded_dir.toURI (), Collections.emptyMap ()))
         {
             Path embedded_dir_path = jar_fs.getPath (dir);
 
@@ -148,6 +147,11 @@ public class Main
             // Here we may have a serious issue, so we return null
             log.log (log_level, "Exception searching bundles on {}: {}", embedded_dir, e.toString());
             return (optional? found_jars: null);
+        }
+
+        for (int i = 0; i < found_jars.size (); i++)
+        {
+            log.debug ("Directory {} URL[{}]: {}", dir, i, found_jars.get (i));
         }
         return (found_jars);
     }
@@ -202,8 +206,8 @@ public class Main
                 log.debug ("Verifying {} -> {} / {}",
                     entry_name, short_class_name, full_class_name);
 
-                if (!short_class_name.toLowerCase ().equals (class_name)
-                    && !full_class_name.toLowerCase ().equals (class_name))
+                if (!short_class_name.toLowerCase ().equals (class_name)    // Short class names always lowercase
+                    && !full_class_name.equals (class_name))                // Full class names may be mixed case
                 {
                     continue;
                 }
@@ -228,7 +232,7 @@ public class Main
 
     private static Method get_jar_entry_point (ClassLoader classloader, String class_name)
     {
-        Class cls;
+        Class<?> cls;
         Method method;
 
         try
@@ -286,7 +290,37 @@ public class Main
 
     public static void main (String[] args)
     {
-        Instant start_timestamp = Instant.now ();
+        long start_timestamp = System.currentTimeMillis ();
+
+        String command;
+        String[] command_args;
+
+        if (args.length == 0)
+        {
+            String root_filename = root_jar_url.getFile ();
+            String prog_name = root_filename.substring (root_filename.lastIndexOf ('/') + 1);
+
+            if (!prog_name.equals (DEFAULT_PROG_NAME))
+            {
+                // The program name is not the default, use it as a command
+                command = prog_name;
+                command_args = args;
+            }
+            else
+            {
+                // We need to scan all command jars, looking for commands and print them
+                System.out.println ("TODO: Print command list and help");
+                return;
+            }
+        }
+        else
+        {
+            // Extract the command we should run and shift the arguments
+            command = args [0];
+            command_args = Arrays.copyOfRange (args, 1, args.length);
+        }
+
+        log.debug ("Locating command '{}' inside {}", command, root_jar_url);
 
         jar_libraries_list = locate_jars ("/libraries");
         List<URL> plugins_cmd_list = locate_jars ("/plugins", true);
@@ -308,18 +342,6 @@ public class Main
         jar_full_list.addAll (jar_commands_list);
         URL[] jar_full_array = jar_full_list.toArray (new URL [jar_full_list.size ()]);
         ClassLoader full_classloader = new URLClassLoader (jar_full_array);
-
-        if (args.length == 0)
-        {
-            // We need to scan all command jars, looking for commands and print them
-            System.out.println ("TODO: Print command list and help");
-            System.exit (0);
-        }
-
-        // Extract the command we should run and shift the arguments
-        String command = args [0];
-        String[] command_args = Arrays.copyOfRange (args, 1, args.length);
-        log.debug ("Locating command '{}' inside {}", command, root_jar_url);
 
         // Heuristics
         //
@@ -356,17 +378,18 @@ public class Main
                 if ((command_main_class = search_main_class_by_name (full_classloader, jar_url, command)) != null)
                 {
                     command_jar_url = jar_url;
+                    break;
                 }
             }
         }
 
-        log.debug ("command_jar_url = {}", command_jar_url);
-        log.debug ("command_main_class = {}", command_main_class);
+        log.debug ("Found command_jar_url => {}", command_jar_url);
+        log.debug ("Found command_main_class => {}", command_main_class);
 
         if (command_jar_url == null)
         {
             System.err.println ("Error: Command '" + command + "' not found");
-            return;
+            System.exit (1);
         }
 
         //------------------------------------------------------------------------
@@ -378,7 +401,13 @@ public class Main
         URL[] jar_run_array = jar_run_list.toArray (new URL [jar_run_list.size ()]);
         URLClassLoader run_classloader = new URLClassLoader (jar_run_array);
         Method main = get_jar_entry_point (run_classloader, command_main_class);
+
         log.debug ("Will invoke method: {}", main);
+        log.debug ("Using classloader: {}", run_classloader);
+        for (int i = 0; i < jar_run_array.length; i++)
+        {
+            log.debug ("Classpath URL[{}]: {}", i, jar_run_array [i]);
+        }
 
         if (main == null)
         {
@@ -386,16 +415,26 @@ public class Main
             System.exit (1);
         }
 
-        long loading_time = Duration.between (start_timestamp, Instant.now ()).toMillis ();
+        long loading_time = System.currentTimeMillis () - start_timestamp;
         log.info ("Loading time: {}ms", String.format ("%d.%03d", loading_time / 1000, loading_time % 1000));
 
         try
         {
             main.invoke (null, new Object[] { command_args });
         }
-        catch (InvocationTargetException | IllegalAccessException e)
+        catch (IllegalAccessException e)
         {
-            System.err.println ("Exception calling main(): " + e.toString());
+            System.err.println ("Error: Unable to invoke main(): " + e.toString ());
+            System.exit (1);
+        }
+        catch (InvocationTargetException e)
+        {
+            Throwable cause = e.getCause ();
+            System.err.println ("Exception calling main(): " + cause.toString ());
+            if (log.isDebug ())
+            {
+                cause.printStackTrace (System.err);
+            }
             System.exit (1);
         }
     }

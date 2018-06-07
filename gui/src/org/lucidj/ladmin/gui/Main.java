@@ -16,6 +16,9 @@
 
 package org.lucidj.ladmin.gui;
 
+import org.lucidj.ladmin.Configuration;
+import org.lucidj.ladmin.Launcher;
+
 import java.awt.GraphicsEnvironment;
 import java.io.File;
 import java.nio.file.Path;
@@ -381,18 +384,18 @@ public class Main
 
                     // Ok, we got a headless java install. Let's try to remedy this by
                     // using our own bundled java, if it's available
-                    if ((bundled_jdk = find_embedded_jdk ()) != null)
-                    {
-                        System.out.println ("Warning: Headless mode detected, trying to use bundled JDK");
-                        Launcher.configure (bundled_jdk, config_path);
-                        Launcher.newLauncher ().launch_gui ();
-                    }
-                    else
-                    {
-                        // TODO: ALSO WRITE A LOG SOMEWHERE
+//                    if ((bundled_jdk = find_embedded_jdk ()) != null)
+//                    {
+//                        System.out.println ("Warning: Headless mode detected, trying to use bundled JDK");
+//                        Launcher.configure (bundled_jdk, config_path);
+//                        Launcher.newLauncher ().launch_gui ();
+//                    }
+//                    else
+//                    {
+//                        // TODO: ALSO WRITE A LOG SOMEWHERE
                         System.err.println ("Error: Headless mode detected");
                         System.err.println ("Please run Launcher GUI using a compatible JDK");
-                    }
+//                    }
                 }
                 else // Graphics Environment available
                 {

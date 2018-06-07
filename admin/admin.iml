@@ -7,5 +7,15 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="module-library" scope="PROVIDED">
+      <library name="admin">
+        <CLASSES>
+          <root url="file://$MODULE_DIR$/../cache/lib/admin/commons-exec/jar" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+        <jarDirectory url="file://$MODULE_DIR$/../cache/lib/admin/commons-exec/jar" recursive="false" />
+      </library>
+    </orderEntry>
   </component>
 </module>

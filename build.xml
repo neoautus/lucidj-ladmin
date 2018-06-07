@@ -18,30 +18,26 @@
 
     <import file="configure.xml"/>
 
-    <target name="build-3rdparty">
-        <property name="3rdparty.dir" value="${basedir}/3rdparty"/>
-        <subant buildpath="${3rdparty.dir}/BrowserLauncher2">
-            <property name="output.dir" value="${libcache.dir}/BrowserLauncher2"/>
+    <target name="build-main">
+        <delete dir="${dist.dir}"/>
+        <subant buildpath="${basedir}/main">
+            <property name="dist.dir" value="${dist.dir}"/>
         </subant>
     </target>
 
-    <target name="build-gui">
-        <subant buildpath="${basedir}/gui"/>
-    </target>
-
     <target name="build-all">
-        <antcall target="build-3rdparty"/>
         <iterate target="build-module"/>
-        <antcall target="build-gui"/>
+        <antcall target="build-main"/>
     </target>
 
     <target name="deploy-all">
         <antcall target="build-all"/>
-        <!--antcall target="build-stage"/-->
     </target>
 
     <target name="clean">
         <iterate target="clean"/>
+        <delete dir="${build.dir}"/>
+        <delete dir="${dist.dir}"/>
     </target>
 
 </project>

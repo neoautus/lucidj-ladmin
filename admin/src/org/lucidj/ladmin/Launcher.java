@@ -14,7 +14,7 @@
  * the License.
  */
 
-package org.lucidj.ladmin.gui;
+package org.lucidj.ladmin;
 
 import org.apache.commons.exec.CommandLine;
 import org.apache.commons.exec.DaemonExecutor;
@@ -98,8 +98,8 @@ public class Launcher implements ExecuteResultHandler
         java_exe = jdk_home + bin_dir + "java" + exe_suffix;
 
         // Launcher JAR
-        System.setProperty ("app.launcher.jar",
-            Launcher.class.getProtectionDomain().getCodeSource().getLocation().getPath ());
+//        System.setProperty ("app.launcher.jar",
+//            Launcher.class.getProtectionDomain().getCodeSource().getLocation().getPath ());
     }
 
     public static Launcher newLauncher ()
@@ -287,20 +287,20 @@ public class Launcher implements ExecuteResultHandler
         launch (args);
     }
 
-    public boolean launch_gui ()
-    {
-        try
-        {
-            CommandLine cmdline = new CommandLine (java_exe);
-            cmdline.addArgument ("-jar");
-            cmdline.addArgument (System.getProperty ("app.launcher.jar"));
-            launch_cmdline (cmdline);
-            return (true);
-        }
-        catch (Exception ignore) {};
-
-        return (false);
-    }
+//    public boolean launch_gui ()
+//    {
+//        try
+//        {
+//            CommandLine cmdline = new CommandLine (java_exe);
+//            cmdline.addArgument ("-jar");
+//            cmdline.addArgument (System.getProperty ("app.launcher.jar"));
+//            launch_cmdline (cmdline);
+//            return (true);
+//        }
+//        catch (Exception ignore) {};
+//
+//        return (false);
+//    }
 }
 
 // EOF

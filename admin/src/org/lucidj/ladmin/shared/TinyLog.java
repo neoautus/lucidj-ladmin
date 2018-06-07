@@ -14,7 +14,7 @@
  * the License.
  */
 
-package org.lucidj.ladmin;
+package org.lucidj.ladmin.shared;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -48,6 +48,16 @@ public class TinyLog
     public void setLogLevel (int level)
     {
         logger_level = level;
+    }
+
+    public int getLogLevel ()
+    {
+        return (logger_level);
+    }
+
+    public boolean isDebug ()
+    {
+        return (logger_level >= LOG_DEBUG);
     }
 
     public static int getConfiguredLogLevel (String logger_name)
@@ -143,7 +153,7 @@ public class TinyLog
 
         if (logger_level > LOG_INFO && loc != null && loc.getFileName () != null)
         {
-            sb.append (loc.getFileName ());
+            sb.append (loc.getClassName ().substring (loc.getClassName ().lastIndexOf ('.') + 1));
 
             if (loc.getLineNumber () > 0)
             {
@@ -158,7 +168,7 @@ public class TinyLog
 
         if (logger_level > LOG_INFO && loc != null && loc.getMethodName () != null)
         {
-            sb.append ('.');
+            sb.append (' ');
             sb.append (loc.getMethodName ());
         }
         sb.append (": ");
@@ -171,6 +181,7 @@ public class TinyLog
             sb.append (args [args.length - 1].toString ());
         }
         System.out.println (sb.toString ());
+        System.out.flush ();
     }
 
     public void trace (String msg, Object... args)
