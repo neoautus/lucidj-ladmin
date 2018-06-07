@@ -206,8 +206,8 @@ public class Main
                 log.debug ("Verifying {} -> {} / {}",
                     entry_name, short_class_name, full_class_name);
 
-                if (!short_class_name.toLowerCase ().equals (class_name)    // Short class names always lowercase
-                    && !full_class_name.equals (class_name))                // Full class names may be mixed case
+                if (!short_class_name.toLowerCase ().equals (class_name.toLowerCase())  // Short class names are case independent
+                    && !full_class_name.equals (class_name))                            // Full class names may be mixed case
                 {
                     continue;
                 }
