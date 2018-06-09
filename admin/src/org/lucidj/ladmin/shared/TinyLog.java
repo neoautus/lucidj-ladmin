@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 NEOautus Ltd. (http://neoautus.com)
+ * Copyright 2018 NEOautus Ltd. (http://neoautus.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -18,6 +18,8 @@ package org.lucidj.ladmin.shared;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 public class TinyLog
 {
@@ -27,7 +29,12 @@ public class TinyLog
     public final static int LOG_INFO  = 3;
     public final static int LOG_DEBUG = 4;
     public final static int LOG_TRACE = 5;
+
     private final static int default_logger_level = LOG_ERROR;
+    private final static long complain_interval = 60 * 5 * 1000;    // Complain every 5 minutes
+    private final static long complain_window = 5 * 1000;           // Complain during 5 seconds
+
+    private Map<Object, Long> whiners = new HashMap<> ();           // Who complained when?
 
     public final static String[] LOG_LEVELS =
     {
@@ -182,6 +189,24 @@ public class TinyLog
         }
         System.out.println (sb.toString ());
         System.out.flush ();
+    }
+
+    public void complain (Object whiner, String msg, Object... args)
+    {
+        // Start complaining if time enough has passed (default 5 minutes)
+        if (whiners.getOrDefault (whiner, -1L) + complain_interval < System.currentTimeMillis ())
+        {
+            whiners.put (whiner, System.currentTimeMillis ());
+            warn (msg, (Object)args);
+        }
+
+        // Keep complaining for a time window (default 5 seconds).
+        // This allow useful complain messages to be caught up,
+        // instead of printing just one and stopping.
+        if (whiners.get (whiner) + complain_window > System.currentTimeMillis())
+        {
+            warn (msg, (Object)args);
+        }
     }
 
     public void trace (String msg, Object... args)
