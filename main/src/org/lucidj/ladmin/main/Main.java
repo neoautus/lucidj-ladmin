@@ -429,12 +429,26 @@ public class Main
         }
         catch (InvocationTargetException e)
         {
+            // TODO: STORE LAST EXCEPTION INFO TO BE ABLE TO 'ladmin report'
             Throwable cause = e.getCause ();
-            System.err.println ("Exception calling main(): " + cause.toString ());
-            if (log.isDebug ())
+            System.err.println ("---");
+            System.err.println ("Exception thrown by " + command + ": " + cause.toString ());
+            System.err.println ("Module : " + command_jar_url);
+            System.err.println ("Class  : " + command_main_class);
+            System.err.print   ("Args   :");
+            if (command_args.length == 0)
             {
-                cause.printStackTrace (System.err);
+                System.err.println (" <none>");
             }
+            else
+            {
+                for (int i = 0; i < command_args.length; i++)
+                {
+                    System.err.print (" " + i + "='" + command_args [i] + "'");
+                }
+                System.err.println ();
+            }
+            cause.printStackTrace (System.err);
             System.exit (1);
         }
     }
