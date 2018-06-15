@@ -14,7 +14,7 @@
  * the License.
  */
 
-package org.lucidj.ladmin;
+package org.lucidj.libladmin;
 
 import java.util.Properties;
 

@@ -18,6 +18,10 @@
 
     <import file="configure.xml"/>
 
+    <target name="build-libladmin">
+        <subant buildpath="${basedir}/libladmin"/>
+    </target>
+
     <target name="build-main">
         <delete dir="${dist.dir}"/>
         <subant buildpath="${basedir}/main">
@@ -26,6 +30,7 @@
     </target>
 
     <target name="build-all">
+        <antcall target="build-libladmin"/>
         <iterate target="build-module"/>
         <antcall target="build-main"/>
     </target>

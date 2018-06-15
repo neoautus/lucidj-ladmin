@@ -14,7 +14,7 @@
  * the License.
  */
 
-package org.lucidj.ladmin;
+package org.lucidj.libladmin;
 
 import java.io.IOException;
 import java.nio.file.Files;

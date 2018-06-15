@@ -16,8 +16,8 @@
 
 package org.lucidj.ladmin.gui;
 
-import org.lucidj.ladmin.Configuration;
-import org.lucidj.ladmin.Launcher;
+import org.lucidj.libladmin.Configuration;
+import org.lucidj.libladmin.Launcher;
 
 import java.awt.GraphicsEnvironment;
 import java.io.File;

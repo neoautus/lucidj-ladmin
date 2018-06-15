@@ -3,8 +3,8 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/3rdparty/BrowserLauncher2/BrowserLauncher2.iml" filepath="$PROJECT_DIR$/3rdparty/BrowserLauncher2/BrowserLauncher2.iml" />
-      <module fileurl="file://$PROJECT_DIR$/admin/admin.iml" filepath="$PROJECT_DIR$/admin/admin.iml" />
       <module fileurl="file://$PROJECT_DIR$/gui/gui.iml" filepath="$PROJECT_DIR$/gui/gui.iml" />
+      <module fileurl="file://$PROJECT_DIR$/libladmin/libladmin.iml" filepath="$PROJECT_DIR$/libladmin/libladmin.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/lucidj-ladmin.iml" filepath="$PROJECT_DIR$/.idea/lucidj-ladmin.iml" />
       <module fileurl="file://$PROJECT_DIR$/main/main.iml" filepath="$PROJECT_DIR$/main/main.iml" />
       <module fileurl="file://$PROJECT_DIR$/shell/shell.iml" filepath="$PROJECT_DIR$/shell/shell.iml" />

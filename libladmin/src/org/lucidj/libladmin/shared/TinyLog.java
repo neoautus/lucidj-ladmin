@@ -14,7 +14,7 @@
  * the License.
  */
 
-package org.lucidj.ladmin.shared;
+package org.lucidj.libladmin.shared;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;

@@ -31,7 +31,7 @@
     </target>
 
     <target name="build-module">
-        <!-- GUI isn't a module -->
+        <!-- Main isn't a module -->
     </target>
 
     <target name="build-main" depends="init">

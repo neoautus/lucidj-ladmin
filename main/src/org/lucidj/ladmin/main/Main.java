@@ -16,7 +16,7 @@
 
 package org.lucidj.ladmin.main;
 
-import org.lucidj.ladmin.shared.TinyLog;
+import org.lucidj.libladmin.shared.TinyLog;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;

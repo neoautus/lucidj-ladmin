@@ -10,11 +10,11 @@
     <orderEntry type="module-library" scope="PROVIDED">
       <library name="admin">
         <CLASSES>
-          <root url="file://$MODULE_DIR$/../cache/lib/admin/commons-exec/jar" />
+          <root url="file://$MODULE_DIR$/../cache/lib/libladmin/libs/jar" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />
-        <jarDirectory url="file://$MODULE_DIR$/../cache/lib/admin/commons-exec/jar" recursive="false" />
+        <jarDirectory url="file://$MODULE_DIR$/../cache/lib/libladmin/libs/jar" recursive="false" />
       </library>
     </orderEntry>
   </component>

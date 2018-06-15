@@ -17,7 +17,7 @@
 package org.lucidj.ladmin.gui;
 
 import edu.stanford.ejalbert.BrowserLauncher;
-import org.lucidj.ladmin.Launcher;
+import org.lucidj.libladmin.Launcher;
 
 import javax.swing.*;
 import javax.swing.text.DefaultCaret;
