@@ -43,8 +43,9 @@ public class TinyLog
 
     private SimpleDateFormat timestamp_format_info = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss ");
     private SimpleDateFormat timestamp_format_debug = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss.SSS ");
-    private int logger_level = 4;
-    private String logger_name = "";
+
+    private static int logger_level = 4;    // Logger level is global
+    private String logger_name = "";        // Logger name is one per instance
 
     public TinyLog (Class log_class)
     {
