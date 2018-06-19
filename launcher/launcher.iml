@@ -9,5 +9,15 @@
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" scope="PROVIDED" name="Shared Libraries" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Project Libraries" level="project" />
+    <orderEntry type="module-library" scope="PROVIDED">
+      <library name="Extension Libraries">
+        <CLASSES>
+          <root url="file://$MODULE_DIR$/../cache/lib/launcher-ext" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+        <jarDirectory url="file://$MODULE_DIR$/../cache/lib/launcher-ext" recursive="false" />
+      </library>
+    </orderEntry>
   </component>
 </module>
