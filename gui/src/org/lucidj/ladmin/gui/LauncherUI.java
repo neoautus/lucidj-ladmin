@@ -450,13 +450,13 @@ public class LauncherUI extends JFrame
                 if (jButton1.getText ().equalsIgnoreCase ("start"))
                 {
                     print ("Starting Karaf... ");
-                    Launcher.newLauncher ().start (new String[] { "single" });
+//                    Launcher.newLauncher ().start (new String[] { "single" });            ---
                     show_status (current_status = STATUS_STARTING);
                 }
                 else
                 {
                     print ("Stopping Karaf... ");
-                    Launcher.newLauncher ().stop (null);
+//                    Launcher.newLauncher ().stop (null);                                  ---
                     show_status (current_status = STATUS_STOPPING);
                 }
             }
@@ -512,11 +512,11 @@ public class LauncherUI extends JFrame
             {
                 public void run()
                 {
-                    String login_token = new Launcher ().getLoginToken ();
-                    String launch_url = (login_token == null)? url: url + "?token=" + login_token;
-
-                    println ("Launching browser: <a href='" + url + "'>" + url + "</a>");
-                    launcher.openURLinBrowser (launch_url);
+//                    String login_token = new Launcher ().getLoginToken ();
+//                    String launch_url = (login_token == null)? url: url + "?token=" + login_token;
+//
+//                    println ("Launching browser: <a href='" + url + "'>" + url + "</a>");
+//                    launcher.openURLinBrowser (launch_url);
                 }
             };
             thread.start();

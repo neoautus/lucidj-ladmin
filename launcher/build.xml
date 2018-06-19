@@ -1,0 +1,48 @@
+<?xml version="1.0"?>
+<!--
+   Copyright 2018 NEOautus Ltd. (http://neoautus.com)
+
+   Licensed under the Apache License, Version 2.0 (the "License"); you may not
+   use this file except in compliance with the License. You may obtain a copy of
+   the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+   WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+   License for the specific language governing permissions and limitations under
+   the License.
+-->
+<project name="launcher" default="build-module">
+
+    <import>
+        <fileset dir="${basedir}" includes="configure.xml"/>
+        <fileset dir=".." includes="configure.xml"/>
+    </import>
+
+    <target name="getlibs" depends="configure.getlibs">
+
+        <path id="project-libs">
+            <fileset dir="${artifacts.dir}" includes="libraries/**/*.jar"/>
+            <fileset dir="${artifacts.dir}" includes="shared/**/*.jar"/>
+        </path>
+
+    </target>
+
+    <target name="build-module" depends="init">
+
+        <build.classic.jar name="launcher" outfileProperty="dist.jar">
+            <manifests>
+                <attribute name="Main-Class" value="org.lucidj.ladmin.launcher.Start"/>
+            </manifests>
+            <classpaths>
+                <path refid="project-libs"/>
+            </classpaths>
+        </build.classic.jar>
+
+        <artifact file="${dist.jar}" group="commands"/>
+
+    </target>
+
+</project>

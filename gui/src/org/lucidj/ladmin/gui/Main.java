@@ -17,7 +17,7 @@
 package org.lucidj.ladmin.gui;
 
 import org.lucidj.libladmin.Configuration;
-import org.lucidj.libladmin.Launcher;
+import org.lucidj.libladmin.JdkLocator;
 
 import java.awt.GraphicsEnvironment;
 import java.io.File;
@@ -32,7 +32,6 @@ public class Main
     static String cache_launcher_dir = file_separator + "cache" + file_separator + "launcher" + file_separator;
 
     static String sys_home = null;
-    static String jdk_home = null;
 
     private static boolean check_path (String path)
     {
@@ -102,74 +101,6 @@ public class Main
         return (check_path (user_dir));
     }
 
-    private static boolean javac_exists (String possible_jdk_home)
-    {
-        File javac_file = new File (possible_jdk_home + bin_dir + "javac" + exe_suffix);
-
-        return (javac_file.exists () && !javac_file.isDirectory ());
-    }
-
-    private static String find_embedded_jdk ()
-    {
-        // Not yet. Lets search inside runtime dir
-        File[] file_list = new File (sys_home + "/runtime").listFiles();
-
-        // TODO: USE NATURAL ORDER
-        for (File file: file_list)
-        {
-            if (file.isDirectory() && javac_exists (file.getAbsolutePath ()))
-            {
-                // Embedded jdk_home
-                return (file.getAbsolutePath ());
-            }
-        }
-
-        return (null);
-    }
-
-    private static boolean get_jdk_home ()
-    {
-        if (jdk_home != null)
-        {
-            if (!javac_exists (jdk_home))
-            {
-                System.err.println ("Error: Invalid JDK home '" + jdk_home + "'");
-                System.exit (1);
-            }
-            return (true);
-        }
-
-        // We ignore a possible JAVA_HOME env, since we'll launch Karaf from
-        // within this very java process.
-        String java_home = System.getProperty ("java.home");
-
-        if (javac_exists (java_home))
-        {
-            // We found jdk_home
-            jdk_home = java_home;
-            return (true);
-        }
-        else // JRE inside JDK?
-        {
-            int possible_jre_dir_pos = java_home.lastIndexOf (file_separator);
-
-            if (possible_jre_dir_pos != -1)
-            {
-                java_home = java_home.substring (0, possible_jre_dir_pos);
-
-                if (javac_exists (java_home))
-                {
-                    // We found jdk_home
-                    jdk_home = java_home;
-                    return (true);
-                }
-            }
-        }
-
-        // Try to find an embedded JDK
-        return ((jdk_home = find_embedded_jdk ()) != null);
-    }
-
     private enum Operations
     {
         START_GUI, START_SINGLE, START_SERVER, STOP, STATUS
@@ -234,7 +165,7 @@ public class Main
                 case "-v":
                 {
                     arg_verbose = true;
-                    Launcher.setVerbose (true);
+//                    TinyLog..Launcher.setVerbose (true);
                     arg = null;
                     break;
                 }
@@ -270,7 +201,7 @@ public class Main
             {
                 case "--jdk":
                 {
-                    jdk_home = param;
+                    JdkLocator.setJDKHome (param);
                     arg = null;
                     break;
                 }
@@ -296,9 +227,9 @@ public class Main
 //            System.exit (1);
 //        }
 
-        if (!get_jdk_home ())
+        if (!JdkLocator.configure (null))
         {
-            System.err.println ("Error: Missing system home");
+            System.err.println ("Error: Couldn't find a valid JDK");
             System.exit (1);
         }
 
@@ -319,7 +250,7 @@ public class Main
         }
 
         System.out.println ("System Home: " + sys_home);
-        System.out.println ("JDK Home: " + jdk_home);
+        System.out.println ("JDK Home: " + JdkLocator.getJDKHome ());
 
         if (config_path != null)
         {
@@ -329,8 +260,6 @@ public class Main
         {
             System.out.println ("Config: Server Mode");
         }
-
-        Launcher.configure (jdk_home, config_path);
 
         switch (arg_operation)
         {
@@ -344,7 +273,7 @@ public class Main
                 }
                 else
                 {
-                    Launcher.newLauncher ().start (args);
+//                    Launcher.newLauncher ().start (args);             ---
                 }
                 break;
             }
@@ -356,7 +285,7 @@ public class Main
                 }
                 else
                 {
-                    Launcher.newLauncher ().stop (args);
+//                    Launcher.newLauncher ().stop (args);              ---
                 }
                 break;
             }
@@ -368,7 +297,7 @@ public class Main
                 }
                 else
                 {
-                    Launcher.newLauncher ().status (args);
+//                    Launcher.newLauncher ().status (args);            ---
                 }
                 break;
             }

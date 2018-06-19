@@ -23,6 +23,10 @@ import java.nio.file.Paths;
 
 public class Configuration
 {
+    public static final String FILE_SEPARATOR = System.getProperty ("file.separator");
+    public static final String PATH_SEPARATOR = System.getProperty ("path.separator");
+    public static final String EXE_SUFFIX = System.getProperty("os.name").startsWith("Win")? ".exe": "";
+
     // Order:
     // Check $INSTALL/etc  -- defaults, low priority
     // Check /etc/lucidj   -- customizations, medium priority
@@ -47,7 +51,7 @@ public class Configuration
             return (null);
         }
 
-        // The path requested may be created if it doesn't exists
+        // The appname dir requested may be created if it doesn't exists
         Path full_path = Paths.get (path.trim (), appname);
 
         if (!Files.exists (full_path))
