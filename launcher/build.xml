@@ -29,7 +29,7 @@
         </path>
 
         <getDependency group="launcher-ext"
-            org="neoautus/lucidj-admind" name="lucidj-adminutil" rev="1.0.0"/>
+            org="org.lucidj.admind" name="org.lucidj.admind.adminutil" rev="1.0.0"/>
 
         <path id="launcher-ext">
             <fileset dir="${libcache.dir}" includes="launcher-ext/**/*.jar"/>

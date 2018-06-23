@@ -36,7 +36,7 @@ public class Stop
         if (AdmindUtil.asyncWait (request))
         {
             String response = AdmindUtil.asyncResponse (request);
-            System.out.println ("Shutdown requested for '" + def_server_name + "': " + response);
+            System.out.println ("Shutdown '" + def_server_name + "': " + response.trim ());
         }
         else
         {

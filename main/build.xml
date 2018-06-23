@@ -37,6 +37,7 @@
     <target name="build-main" depends="init">
 
         <property name="main-class" value="org.lucidj.ladmin.main.Main"/>
+        <property name="revision" value="1.0-rc2"/>
 
         <property name="src.dir" value="${basedir}/src"/>
         <property name="main.classes.dir" value="${build.dir}/main"/>
@@ -52,7 +53,10 @@
             </classpath>
         </javac>
 
-        <property name="dist.jar" value="${dist.dir}/ladmin.jar"/>
+        <property name="packaging.name" value="lucidj-ladmin-${revision}"/>
+        <property name="packaging.dir" value="${build.dir}/${packaging.name}"/>
+
+        <property name="dist.jar" value="${packaging.dir}/ladmin.jar"/>
         <delete file="${dist.jar}"/>
         <jar destfile="${dist.jar}">
             <manifest>
@@ -64,14 +68,11 @@
             <zipgroupfileset dir="${artifacts.dir}" includes="shared/*.jar"/>
         </jar>
 
-        <property name="fancy-launcher" value="${dist.dir}/ladmin"/>
+        <property name="fancy-launcher" value="${packaging.dir}/ladmin"/>
         <echo message="Creating ${fancy-launcher}"/>
         <copy file="${basedir}/resources/ladmin" overwrite="true"
               tofile="${fancy-launcher}" >
             <filterchain>
-                <!--replacetokens >
-                    <token key="MAINCLASS" value="${main.class}"/>
-                </replacetokens-->
                 <fixcrlf eol="lf" eof="remove" fixlast="true"/>
             </filterchain>
         </copy>
@@ -80,7 +81,17 @@
         </concat>
         <chmod file="${fancy-launcher}" perm="a+x"/>
 
-        <copy file="${basedir}/resources/ladmin.png" todir="${dist.dir}"/>
+        <copy file="${basedir}/resources/ladmin.png" todir="${packaging.dir}"/>
+
+        <!-- ================================ -->
+        <!-- Create the distribution packages -->
+        <!-- ================================ -->
+
+        <property name="dist.zip" value="${dist.dir}/${packaging.name}.zip"/>
+        <zip destfile="${dist.zip}">
+            <zipfileset dir="${packaging.dir}" includes="**/*" prefix="${packaging.name}"/>
+        </zip>
+        <publish file="${dist.zip}" org="org.lucidj.ladmin" name="lucidj-ladmin" rev="${revision}" type="zip"/>
 
     </target>
 
