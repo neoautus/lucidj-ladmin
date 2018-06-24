@@ -16,6 +16,7 @@
 
 package org.lucidj.ladmin.launcher;
 
+import org.lucidj.ext.admind.AdmindUtil;
 import org.lucidj.libladmin.AlphanumComparator;
 import org.lucidj.libladmin.JdkLocator;
 import org.lucidj.libladmin.Launcher;
@@ -23,17 +24,11 @@ import org.lucidj.libladmin.shared.TinyLog;
 
 import java.io.File;
 import java.io.FileFilter;
-import java.io.FilenameFilter;
 import java.io.IOException;
-import java.net.URI;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
-import java.util.Properties;
-import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
-import java.util.jar.Manifest;
 
 public class Start
 {
@@ -159,6 +154,16 @@ public class Start
                 System.err.println ("Error: Unknown argument '" + arg + "'");
                 System.exit (1);
             }
+        }
+
+        String def_server_name = AdmindUtil.getDefaultServerName ();
+        String admind = AdmindUtil.initAdmindDir ();
+
+        if (admind != null)
+        {
+            // TODO: SHOULD WE HAVE AN "ENSURE RUNNING"?
+            System.out.println ("Error: Server '" + def_server_name + "' is already running");
+            System.exit (1);
         }
 
         // For java -jar it is the jar file itself
