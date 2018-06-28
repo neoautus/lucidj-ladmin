@@ -22,7 +22,7 @@
  *
  */
 
-package org.lucidj.libladmin;
+package org.lucidj.libladmin.shared;
 
 import java.io.File;
 import java.util.Comparator;

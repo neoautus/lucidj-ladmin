@@ -135,6 +135,7 @@ public class Launcher implements ExecuteResultHandler
         cmdline.addArgument ("-XX:+UnsyncloadClass");
         cmdline.addArgument ("-Djava.awt.headless=true");
         //cmdline.addArgument ("-Dcom.sun.management.jmxremote");
+        //cmdline.addArgument ("-XX:+PerfDisableSharedMem");
 
         //-------------
         // LucidJ args

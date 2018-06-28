@@ -17,9 +17,9 @@
 package org.lucidj.ladmin.launcher;
 
 import org.lucidj.ext.admind.AdmindUtil;
-import org.lucidj.libladmin.AlphanumComparator;
 import org.lucidj.libladmin.JdkLocator;
 import org.lucidj.libladmin.Launcher;
+import org.lucidj.libladmin.shared.FrameworkLocator;
 import org.lucidj.libladmin.shared.TinyLog;
 
 import java.io.File;
@@ -169,40 +169,15 @@ public class Start
         // For java -jar it is the jar file itself
         File jar_file = Paths.get (System.getProperty ("java.class.path")).toFile ();
         File jar_dir = jar_file.getParentFile ();
-        File[] file_array = jar_dir.listFiles (new FileFilter()
-        {
-            @Override
-            public boolean accept (File file)
-            {
-                log.trace ("Filtering: {}", file);
+        File[] file_array = FrameworkLocator.locateFrameworks (jar_dir);
 
-                if (!file.getName().toLowerCase ().endsWith (".jar"))
-                {
-                    return (false);
-                }
-
-                try
-                {
-                    // We want only jars with OSGi framework available
-                    JarFile jar = new JarFile (file);
-                    return (jar.getJarEntry ("META-INF/services/org.osgi.framework.launch.FrameworkFactory") != null);
-                }
-                catch (IOException e)
-                {
-                    log.debug ("Exception reading {}: {}", file, e.toString());
-                };
-                return (false);
-            }
-        });
-
-        if (file_array == null || file_array.length == 0)
+        if (file_array == null)
         {
             System.out.println ("Error: Couldn't find OSGi framework jar on " + jar_dir);
             System.exit (1);
         }
 
         // Get latest version
-        Arrays.sort (file_array, Collections.reverseOrder (new AlphanumComparator ()));
         File framework = file_array [0];
 
         System.out.println ("Selected framework: " + framework);

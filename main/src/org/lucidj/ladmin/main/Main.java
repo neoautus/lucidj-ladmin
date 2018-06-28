@@ -16,8 +16,10 @@
 
 package org.lucidj.ladmin.main;
 
+import org.lucidj.libladmin.shared.FrameworkLocator;
 import org.lucidj.libladmin.shared.TinyLog;
 
+import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -28,6 +30,7 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.jar.Attributes;
 import java.util.jar.JarEntry;
 import java.util.jar.JarInputStream;
@@ -39,10 +42,12 @@ public class Main
     private final static TinyLog log = new TinyLog (Main.class);
 
     private final static String DEFAULT_PROG_NAME = "ladmin";
-    private final static String HANDLER_PREFIX = "embedded";
+    private final static Map<String, URI> handler_to_uri = new ConcurrentHashMap<>();
     private static URL root_jar_url;
     private static List<URL> jar_libraries_list;
     private static List<URL> jar_commands_list;
+    private static URL command_jar_url;
+    private static String command_main_class;
 
     static
     {
@@ -62,9 +67,9 @@ public class Main
 
         URL.setURLStreamHandlerFactory (new URLStreamHandlerFactory()
         {
-            public URLStreamHandler createURLStreamHandler (String protocol)
+            public URLStreamHandler createURLStreamHandler (final String protocol)
             {
-                if (!HANDLER_PREFIX.equals (protocol))
+                if (!handler_to_uri.containsKey (protocol))
                 {
                     return (null);
                 }
@@ -74,37 +79,42 @@ public class Main
                         throws IOException
                     {
                         log.trace ("URLStreamHandler->openConnection: {}", url);
-                        return (new URL ("jar:" + root_jar_url + "!" + url.getPath ()).openConnection ());
+                        return (new URL ("jar:" + handler_to_uri.get (protocol) + "!" + url.getPath ()).openConnection ());
                     }
                 });
             }
         });
     }
 
-    static List<URL> locate_jars (String dir)
+    static List<URL> locate_jars (URI source_jar, String dir)
     {
         // These jars are NOT optional
-        return (locate_jars (dir, false));
+        return (locate_jars (source_jar, dir, false));
     }
 
-    static List<URL> locate_jars (String dir, boolean optional)
+    static List<URL> locate_jars (URI source_jar, String dir, boolean optional)
     {
-        URL embedded_dir = Main.class.getResource (dir);
+        URI embedded_dir;
         List<URL> found_jars = new ArrayList<> ();
         int log_level = optional? TinyLog.LOG_INFO: TinyLog.LOG_ERROR;
 
-        //---------------------------
-        // Locate dir inside our jar
-        //---------------------------
-
-        if (embedded_dir == null)
+        try
+        {
+            embedded_dir = new URI ("jar:" + source_jar + "!" + dir);
+        }
+        catch (URISyntaxException e)
         {
             // We return an empty list on error
-            log.log (log_level, "Embedded directory {} not found", dir);
+            log.log (log_level, "Embedded directory {} not found: {}", dir, e.toString());
             return (optional? found_jars: null);
         }
 
-        try (FileSystem jar_fs = FileSystems.newFileSystem (embedded_dir.toURI (), Collections.emptyMap ()))
+        // Build fake protocol handler using a prefix plus jar hash code
+        String handler = "jarjar-" + Integer.toHexString (source_jar.hashCode ());
+        handler_to_uri.put (handler, source_jar);
+        log.debug ("Protocol '{}' -> {}", handler, source_jar);
+
+        try (FileSystem jar_fs = FileSystems.newFileSystem (embedded_dir, Collections.emptyMap ()))
         {
             Path embedded_dir_path = jar_fs.getPath (dir);
 
@@ -131,7 +141,7 @@ public class Main
                     try
                     {
                         // I'm starting to think I like ugly tricks...
-                        String jar_embedded_uri = HANDLER_PREFIX + ":" + dir + "/" + embedded_jar.getFileName();
+                        String jar_embedded_uri = handler + ":" + dir + "/" + embedded_jar.getFileName();
                         URL jar_embedded_url = new URL (jar_embedded_uri);
                         found_jars.add (jar_embedded_url);
                     }
@@ -142,7 +152,7 @@ public class Main
                 }
             }
         }
-        catch (URISyntaxException | IOException e)
+        catch (IOException e)
         {
             // Here we may have a serious issue, so we return null
             log.log (log_level, "Exception searching bundles on {}: {}", embedded_dir, e.toString());
@@ -288,43 +298,11 @@ public class Main
         return (null);
     }
 
-    public static void main (String[] args)
+    private static boolean locate_command_on_jar (String command, URI source_jar, boolean optional)
     {
-        long start_timestamp = System.currentTimeMillis ();
-
-        String command;
-        String[] command_args;
-
-        if (args.length == 0)
-        {
-            String root_filename = root_jar_url.getFile ();
-            String prog_name = root_filename.substring (root_filename.lastIndexOf ('/') + 1);
-
-            if (!prog_name.equals (DEFAULT_PROG_NAME))
-            {
-                // The program name is not the default, use it as a command
-                command = prog_name;
-                command_args = args;
-            }
-            else
-            {
-                // We need to scan all command jars, looking for commands and print them
-                System.out.println ("TODO: Print command list and help");
-                return;
-            }
-        }
-        else
-        {
-            // Extract the command we should run and shift the arguments
-            command = args [0];
-            command_args = Arrays.copyOfRange (args, 1, args.length);
-        }
-
-        log.debug ("Locating command '{}' inside {}", command, root_jar_url);
-
-        jar_libraries_list = locate_jars ("/libraries");
-        List<URL> plugins_cmd_list = locate_jars ("/plugins", true);
-        List<URL> internal_cmd_list = locate_jars ("/commands");
+        jar_libraries_list = locate_jars (source_jar, "/libraries", optional);
+        List<URL> plugins_cmd_list = locate_jars (source_jar, "/plugins", true);
+        List<URL> internal_cmd_list = locate_jars (source_jar, "/commands", optional);
 
         // Ensure no serious errors around
         if (jar_libraries_list == null || plugins_cmd_list == null || internal_cmd_list == null)
@@ -359,8 +337,8 @@ public class Main
         // Search by jar name
         //--------------------
 
-        URL command_jar_url = get_jar_by_name (command);
-        String command_main_class = null;
+        command_jar_url = get_jar_by_name (command);
+        command_main_class = null;
 
         if (command_jar_url != null)
         {
@@ -385,19 +363,105 @@ public class Main
 
         log.debug ("Found command_jar_url => {}", command_jar_url);
         log.debug ("Found command_main_class => {}", command_main_class);
+        return (command_jar_url != null);
+    }
 
-        if (command_jar_url == null)
+    public static void main (String[] args)
+    {
+        long start_timestamp = System.currentTimeMillis ();
+
+        String command;
+        String[] command_args;
+        URI root_jar_uri = null;
+
+        try
         {
-            System.err.println ("Error: Command '" + command + "' not found");
+            root_jar_uri = root_jar_url.toURI ();
+        }
+        catch (URISyntaxException e)
+        {
+            System.err.println ("Error: Unable to get '" + root_jar_url + "' URI location");
             System.exit (1);
+        }
+
+        if (args.length == 0)
+        {
+            String root_filename = root_jar_url.getFile ();
+            String prog_name = root_filename.substring (root_filename.lastIndexOf ('/') + 1);
+
+            if (!prog_name.equals (DEFAULT_PROG_NAME))
+            {
+                // The program name is not the default, use it as a command
+                command = prog_name;
+                command_args = args;
+            }
+            else
+            {
+                // We need to scan all command jars, looking for commands and print them
+                System.out.println ("TODO: Print command list and help");
+                return;
+            }
+        }
+        else
+        {
+            // Extract the command we should run and shift the arguments
+            command = args [0];
+            command_args = Arrays.copyOfRange (args, 1, args.length);
+        }
+
+        //-----------------------------------------------------------------
+        // Locate the desired command inside this jar or the framework jar
+        //-----------------------------------------------------------------
+
+        // We assume all frameworks located alongside ladmin
+        File jar_file = new File (root_jar_uri);
+        File jar_dir = jar_file.getParentFile ();
+        File[] available_framework_jars = FrameworkLocator.locateFrameworks (jar_dir);
+        boolean command_found_inside_framework = false;
+
+        if (available_framework_jars != null)
+        {
+            // We have at least 1 framework jar available, try the latest
+            URI framework_jar = available_framework_jars [0].toURI();
+            log.debug ("Locating command '{}' inside {}", command, framework_jar);
+            command_found_inside_framework = locate_command_on_jar (command, framework_jar, true);
+        }
+
+        // The commands found inside the framework jar have precedence over the built-in commands
+        if (!command_found_inside_framework)
+        {
+            log.debug ("Locating command '{}' inside {}", command, root_jar_uri);
+
+            if (!locate_command_on_jar (command, root_jar_uri, false))
+            {
+                System.err.println ("Error: Command '" + command + "' not found");
+                System.exit (1);
+            }
         }
 
         //------------------------------------------------------------------------
         // Run main() with a classpath composed only of libraries and command jar
         //------------------------------------------------------------------------
 
+        // Search class path: command jar first, followed by libraries
         List<URL> jar_run_list = new ArrayList<> (jar_libraries_list);
         jar_run_list.add (0, command_jar_url);
+
+        // If the command is inside the framework, it takes search precedence
+        if (command_found_inside_framework)
+        {
+            try
+            {
+                jar_run_list.add (0, available_framework_jars [0].toURI ().toURL ());
+            }
+            catch (MalformedURLException e)
+            {
+                System.err.println ("Error: Framework '" + available_framework_jars [0] + "' generates " + e.toString());
+                System.exit (1);
+            }
+        }
+
+        // Create the classloader
         URL[] jar_run_array = jar_run_list.toArray (new URL [jar_run_list.size ()]);
         URLClassLoader run_classloader = new URLClassLoader (jar_run_array);
         Method main = get_jar_entry_point (run_classloader, command_main_class);
