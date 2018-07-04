@@ -1,5 +1,0 @@
-Bundle-Name: LucidJ Embedded Telnet Client
-Bundle-SymbolicName: org.lucidj.shell
-Bundle-Version: 1.0.0
-Bundle-Vendor: NEOautus Ltd
-Private-Package: org.lucidj.shell

@@ -17,5 +17,15 @@
         <jarDirectory url="file://$MODULE_DIR$/../cache/lib/shell/libs/jar" recursive="false" />
       </library>
     </orderEntry>
+    <orderEntry type="module-library" scope="PROVIDED">
+      <library name="AdminUtil">
+        <CLASSES>
+          <root url="file://$MODULE_DIR$/../cache/lib/shell/adminutil" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+        <jarDirectory url="file://$MODULE_DIR$/../cache/lib/shell/adminutil" recursive="false" />
+      </library>
+    </orderEntry>
   </component>
 </module>
