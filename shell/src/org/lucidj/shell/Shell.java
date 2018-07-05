@@ -205,6 +205,13 @@ public class Shell
                     send_terminal_size();
                 }
 
+                if (logout_terminal) // Using Ctrl+D or Ctrl+Z
+                {
+                    terminal.writer ().println ("\nLogout");
+                    terminal.flush ();
+                    break;
+                }
+
                 int bytes_exchanged = 0;
                 int bytes_available = remote_in.available ();
 
@@ -222,13 +229,6 @@ public class Shell
                     terminal_out.write (buffer, 0, bytes_exchanged);
                 }
 
-                if (logout_terminal) // Using Ctrl+D or Ctrl+Z
-                {
-                    terminal.writer ().println ("\rLogout");
-                    terminal.flush ();
-                    break;
-                }
-
                 if (terminal_in.ready ())
                 {
                     int ch = terminal_in.read ();
@@ -241,7 +241,6 @@ public class Shell
 
                         if (ch == 4) // Ctrl+D
                         {
-                            terminal.writer ().println ();
                             logout_terminal = true;
                         }
                     }
