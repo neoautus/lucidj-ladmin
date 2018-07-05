@@ -93,6 +93,12 @@
         </zip>
         <publish file="${dist.zip}" org="org.lucidj.ladmin" name="lucidj-ladmin" rev="${revision}" type="zip"/>
 
+        <!-- Copy the package contents to dist.dir -->
+        <copy todir="${dist.dir}">
+            <fileset dir="${packaging.dir}" includes="*"/>
+        </copy>
+        <chmod file="${dist.dir}/ladmin" perm="a+x"/>
+
     </target>
 
 </project>
