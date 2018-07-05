@@ -61,9 +61,6 @@ public class Sh
             System.exit (1);
         }
 
-        System.out.println ("TERMINAL TYPE = '" + terminal.getType() + "'");
-        System.out.println ("TERMINAL DIMENSIONS = " + terminal.getWidth() + " x " + terminal.getHeight());
-
         //----------------
         // AdminD request
         //----------------
