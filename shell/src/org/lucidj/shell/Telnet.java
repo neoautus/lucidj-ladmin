@@ -28,7 +28,7 @@ import java.io.Reader;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 
-public class Shell
+public class Telnet
 {
     enum TelnetState
     {

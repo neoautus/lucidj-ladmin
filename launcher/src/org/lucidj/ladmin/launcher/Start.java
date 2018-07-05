@@ -156,7 +156,7 @@ public class Start
             }
         }
 
-        String def_server_name = AdmindUtil.getDefaultServerName ();
+        String def_server_name = AdmindUtil.getServerName ();
         String admind = AdmindUtil.initAdmindDir ();
 
         if (admind != null)

@@ -29,7 +29,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.Reader;
 
-public class Sh
+public class Shell
 {
     private static int UPDATE_TERMINAL_DELAY_MS = 500;
 
@@ -86,7 +86,7 @@ public class Sh
         // AdminD init and connect
         //-------------------------
 
-        String def_server_name = AdmindUtil.getDefaultServerName ();
+        String def_server_name = AdmindUtil.getServerName ();
         String admind = AdmindUtil.initAdmindDir ();
 
         if (admind == null)
@@ -127,7 +127,9 @@ public class Sh
                 .signalHandler (Terminal.SignalHandler.SIG_IGN)
                 .build ();
 
-            terminal.writer ().println ("Connected to '" + def_server_name + "': " + request);
+            String jvmid = AdmindUtil.getServerProperties().getProperty ("server.jvmid");
+            String jvmstr = (jvmid == null)? "": "(" + jvmid + ")";
+            terminal.writer ().println ("Connected to '" + def_server_name + "' " + jvmstr);
             terminal.writer ().flush ();
 
             //----------------------
@@ -164,8 +166,8 @@ public class Sh
                     {
                         // Say to Gogo that's the end
                         logout_terminal = true;
-                        remote_out.write(4);
-                        remote_out.flush();
+                        remote_out.write (4);
+                        remote_out.flush ();
                     }
                     catch (IOException ignore) {};
                 }
