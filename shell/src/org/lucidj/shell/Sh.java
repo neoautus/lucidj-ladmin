@@ -145,6 +145,13 @@ public class Sh
 
         for (;;)
         {
+            if (AdmindUtil.asyncPoll (request) == AdmindUtil.ASYNC_GONE)
+            {
+                terminal.writer ().println ("\nConnection closed by server");
+                terminal.flush ();
+                break;
+            }
+
             int bytes_read = 0;
             int bytes_available = remote_in.available ();
 
@@ -155,13 +162,6 @@ public class Sh
                     bytes_available = buffer.length;
                 }
                 bytes_read = remote_in.read (buffer, 0, bytes_available);
-            }
-
-            if (bytes_read == -1)
-            {
-                terminal.writer ().println ("\nConnection closed by server");
-                terminal.flush ();
-                break;
             }
 
             if (bytes_read > 0)
