@@ -31,17 +31,89 @@ import java.io.Reader;
 
 public class Sh
 {
+    private static int UPDATE_TERMINAL_DELAY_MS = 500;
+
     private static Terminal terminal = null;
     private static Attributes saved_attributes = null;
+    private static boolean logout_terminal;
+    private static long update_size_timestamp = -1;
 
     private static DataInputStream remote_in;
     private static DataOutputStream remote_out;
 
     private static byte[] buffer = new byte [8192];
 
-    public static void main (String[] args)
-        throws Exception
+    private static void send_terminal_size ()
     {
+        try
+        {
+            remote_out.write ((byte)0xf1);
+            remote_out.write (Integer.toString (terminal.getWidth ()).getBytes ());
+            remote_out.write (';');
+            remote_out.write (Integer.toString (terminal.getHeight ()).getBytes ());
+            remote_out.write ((byte)0xff);
+            remote_out.flush ();
+        }
+        catch (IOException ignore) {};
+    }
+
+    private static void send_terminal_type ()
+    {
+        try
+        {
+            remote_out.write ((byte)0xf0);
+            remote_out.write (terminal.getType ().getBytes ());
+            remote_out.write ((byte)0xff);
+            remote_out.flush ();
+        }
+        catch (IOException ignore) {};
+    }
+
+    private static void send_terminfo_done ()
+    {
+        try
+        {
+            // Says that all initialization info was sent
+            remote_out.write ('\r');
+            remote_out.flush ();
+        }
+        catch (IOException ignore) {};
+    }
+
+    public static void main (String[] args)
+    {
+        //-------------------------
+        // AdminD init and connect
+        //-------------------------
+
+        String def_server_name = AdmindUtil.getDefaultServerName ();
+        String admind = AdmindUtil.initAdmindDir ();
+
+        if (admind == null)
+        {
+            System.out.println ("Unable to find '" + def_server_name + "'");
+            System.exit (1);
+        }
+
+        final String request = AdmindUtil.asyncInvoke ("shell", "true");
+
+        if (!AdmindUtil.asyncWait (request, 5000, AdmindUtil.ASYNC_RUNNING))
+        {
+            String error = AdmindUtil.asyncError (request);
+            System.out.println ("Error opening console for '" + def_server_name + "': " + error);
+            System.exit (1);
+        }
+
+        // Cleanup the shell transaction at exit
+        Runtime.getRuntime ().addShutdownHook (new Thread ()
+        {
+            public void run ()
+            {
+                // Check for error forces transaction discard
+                AdmindUtil.asyncError (request);
+            }
+        });
+
         //---------------
         // Init terminal
         //---------------
@@ -54,144 +126,171 @@ public class Sh
                 .nativeSignals (true)
                 .signalHandler (Terminal.SignalHandler.SIG_IGN)
                 .build ();
-        }
-        catch (IOException e)
-        {
-            System.out.println ("Exception opening terminal: " + e.toString());
-            System.exit (1);
-        }
 
-        //----------------
-        // AdminD request
-        //----------------
+            terminal.writer ().println ("Connected to '" + def_server_name + "': " + request);
+            terminal.writer ().flush ();
 
-        String def_server_name = AdmindUtil.getDefaultServerName ();
-        String admind = AdmindUtil.initAdmindDir ();
+            //----------------------
+            // Init interconnection
+            //----------------------
 
-        if (admind == null)
-        {
-            System.out.println ("Unable to find '" + def_server_name + "'");
-            System.exit (1);
-        }
+            remote_in = new DataInputStream (new FileInputStream (AdmindUtil.responseFile (request)));
+            remote_out = new DataOutputStream (new FileOutputStream (AdmindUtil.requestFile (request), true));
 
-        String request = AdmindUtil.asyncInvoke ("shell", "true");
+            //---------------------------
+            // Init terminal and session
+            //---------------------------
 
-        if (!AdmindUtil.asyncWait (request, 5000, AdmindUtil.ASYNC_RUNNING))
-        {
-            String error = AdmindUtil.asyncError (request);
-            System.out.println ("Error requesting shutdown for '" + def_server_name + "': " + error);
-            System.exit (1);
-        }
-
-        System.out.println ("Connected to '" + def_server_name + "': " + request);
-
-        //----------------------
-        // Init interconnection
-        //----------------------
-
-        remote_in = new DataInputStream (new FileInputStream (AdmindUtil.responseFile (request)));
-        remote_out = new DataOutputStream (new FileOutputStream (AdmindUtil.requestFile (request), true));
-
-        //---------------------------
-        // Init terminal and session
-        //---------------------------
-
-        terminal.handle (Terminal.Signal.WINCH, new Terminal.SignalHandler ()
-        {
-            @Override
-            public void handle (Terminal.Signal signal)
+            terminal.handle (Terminal.Signal.WINCH, new Terminal.SignalHandler ()
             {
-//                send_terminal_size ();
-                terminal.writer ().println ("<SIZE=" + terminal.getWidth() + "x" + terminal.getHeight() + ">");
-            }
-        });
-
-        // We allow here to exit the terminal by using Ctrl+Z. The traditional method
-        // Ctrl+D still works. The Ctrl+Z is interesting because it avoids closing the
-        // shell window by accident when hitting Ctrl+D twice, or if you fail to notice
-        // that gogo is already closed (like I do sometimes).
-        terminal.handle (Terminal.Signal.TSTP, new Terminal.SignalHandler ()
-        {
-            @Override
-            public void handle (Terminal.Signal signal)
-            {
-                terminal.writer ().println ();
-//                logout_terminal = true;
-                terminal.writer ().println ("<QUIT!>");
-            }
-        });
-
-        Reader terminal_in = terminal.reader ();
-        OutputStream terminal_out = terminal.output ();
-        saved_attributes = terminal.enterRawMode ();
-
-        // Init terminal information
-        remote_out.write ((byte)0xf0);
-        remote_out.write (terminal.getType ().getBytes ());
-        remote_out.write ((byte)0xf1);
-        remote_out.write (Integer.toString (terminal.getWidth ()).getBytes ());
-        remote_out.write (';');
-        remote_out.write (Integer.toString (terminal.getHeight ()).getBytes ());
-        remote_out.write ((byte)0xff);
-        remote_out.write ('\r');
-        remote_out.flush ();
-
-        //-----------
-        // Shell it!
-        //-----------
-
-        for (;;)
-        {
-            if (AdmindUtil.asyncPoll (request) == AdmindUtil.ASYNC_GONE)
-            {
-                terminal.writer ().println ("\nConnection closed by server");
-                terminal.flush ();
-                break;
-            }
-
-            int bytes_read = 0;
-            int bytes_available = remote_in.available ();
-
-            if (bytes_available > 0)
-            {
-                if (bytes_available > buffer.length)
+                @Override
+                public void handle (Terminal.Signal signal)
                 {
-                    bytes_available = buffer.length;
+                    // Set up to update the terminal size
+                    update_size_timestamp = System.currentTimeMillis() + UPDATE_TERMINAL_DELAY_MS;
                 }
-                bytes_read = remote_in.read (buffer, 0, bytes_available);
-            }
+            });
 
-            if (bytes_read > 0)
+            // We allow here to exit the terminal by using Ctrl+Z. The traditional method
+            // Ctrl+D still works. The Ctrl+Z is interesting because it avoids closing the
+            // shell window by accident when hitting Ctrl+D twice, or if you fail to notice
+            // that gogo is already closed (like I do sometimes).
+            terminal.handle (Terminal.Signal.TSTP, new Terminal.SignalHandler ()
             {
-                for (int i = 0; i < bytes_read; i++)
+                @Override
+                public void handle (Terminal.Signal signal)
                 {
-                    terminal_out.write (buffer[i] & 0x00ff);
-                }
-            }
-
-            if (terminal_in.ready ())
-            {
-                int ch = terminal_in.read ();
-
-                if (ch >= 0)
-                {
-                    remote_out.write (ch);
-                    remote_out.flush ();
-
-                    if (ch == 4)
+                    try
                     {
-                        break;
+                        // Say to Gogo that's the end
+                        logout_terminal = true;
+                        remote_out.write(4);
+                        remote_out.flush();
+                    }
+                    catch (IOException ignore) {};
+                }
+            });
+
+            // Get our stdin/stdout and enter raw mode
+            Reader terminal_in = terminal.reader ();
+            OutputStream terminal_out = terminal.output ();
+            saved_attributes = terminal.enterRawMode ();
+
+            // Init terminal information
+            send_terminal_type ();
+            send_terminal_size ();
+            send_terminfo_done ();
+
+            //-----------
+            // Shell it!
+            //-----------
+
+            for (;;)
+            {
+                if (AdmindUtil.asyncPoll (request) == AdmindUtil.ASYNC_GONE)
+                {
+                    terminal.writer ().println ("\nConnection closed by server");
+                    terminal.flush ();
+                    break;
+                }
+
+                // Instead of updating the terminal size every time it changes,
+                // we wait a little until the user settles with the desired size
+                if (update_size_timestamp != -1
+                    && update_size_timestamp < System.currentTimeMillis ())
+                {
+                    update_size_timestamp = -1;
+                    send_terminal_size();
+                }
+
+                int bytes_exchanged = 0;
+                int bytes_available = remote_in.available ();
+
+                if (bytes_available > 0)
+                {
+                    if (bytes_available > buffer.length)
+                    {
+                        bytes_available = buffer.length;
+                    }
+                    bytes_exchanged = remote_in.read (buffer, 0, bytes_available);
+                }
+
+                if (bytes_exchanged > 0)
+                {
+                    terminal_out.write (buffer, 0, bytes_exchanged);
+                }
+
+                if (logout_terminal) // Using Ctrl+D or Ctrl+Z
+                {
+                    terminal.writer ().println ("\rLogout");
+                    terminal.flush ();
+                    break;
+                }
+
+                if (terminal_in.ready ())
+                {
+                    int ch = terminal_in.read ();
+
+                    if (ch >= 0)
+                    {
+                        remote_out.write (ch);
+                        remote_out.flush ();
+                        bytes_exchanged++;
+
+                        if (ch == 4) // Ctrl+D
+                        {
+                            terminal.writer ().println ();
+                            logout_terminal = true;
+                        }
                     }
                 }
-            }
 
-            if (bytes_read == 0)
-            {
-                Thread.sleep (20);
+                // Only yield if the console is idle
+                if (bytes_exchanged == 0)
+                {
+                    Thread.sleep (20);
+                }
             }
         }
+        catch (Exception wtf)
+        {
+            terminal.writer ().println ("\n" + wtf.toString());
+            terminal.flush ();
+        }
+        finally
+        {
+            if (terminal != null)
+            {
+                // Restore normal terminal operation
+                if (saved_attributes != null)
+                {
+                    terminal.setAttributes (saved_attributes);
+                }
 
-        // TODO: Restore attributes...
+                // Fix unfortunate lack of LineReader cleanup
+                // with BRACKETED PASTE OFF (Solving the annoying 0~ 1~)
+                terminal.writer ().write ("\033[?2004l");
+                terminal.flush ();
+
+                try
+                {
+                    terminal.close ();
+                }
+                catch (IOException ignore) {};
+
+                try
+                {
+                    remote_in.close ();
+                }
+                catch (IOException ignore) {};
+
+                try
+                {
+                    remote_out.close ();
+                }
+                catch (IOException ignore) {};
+            }
+        }
     }
 }
 
