@@ -349,6 +349,11 @@ public class Shell
                     terminal.setAttributes (saved_attributes);
                 }
 
+                // Fix unfortunate lack of LineReader cleanup
+                // with BRACKETED PASTE OFF (Solving the annoying 0~ 1~)
+                terminal.writer ().write ("\033[?2004l");
+                terminal.flush ();
+
                 try
                 {
                     terminal.close ();
