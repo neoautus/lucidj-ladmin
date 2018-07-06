@@ -19,6 +19,8 @@ package org.lucidj.shell;
 import org.jline.terminal.Attributes;
 import org.jline.terminal.Terminal;
 import org.jline.terminal.TerminalBuilder;
+import org.jline.utils.AttributedStringBuilder;
+import org.jline.utils.AttributedStyle;
 import org.lucidj.ext.admind.AdmindUtil;
 
 import java.io.DataInputStream;
@@ -189,9 +191,22 @@ public class Shell
 
             for (;;)
             {
-                if (AdmindUtil.asyncPoll (request) == AdmindUtil.ASYNC_GONE)
+                int shell_status = AdmindUtil.asyncPoll (request);
+
+                if (shell_status == AdmindUtil.ASYNC_GONE)
                 {
                     terminal.writer ().println ("\nConnection closed by server");
+                    terminal.flush ();
+                    break;
+                }
+                else if (shell_status == AdmindUtil.ASYNC_ERROR)
+                {
+                    AttributedStringBuilder sb = new AttributedStringBuilder ();
+                    sb.style (sb.style ().foreground (AttributedStyle.RED));
+                    sb.append ("\n");
+                    sb.append (AdmindUtil.asyncError (request));
+                    sb.style (sb.style ().foregroundDefault ());
+                    terminal.writer().println (sb.toAnsi (terminal));
                     terminal.flush ();
                     break;
                 }
