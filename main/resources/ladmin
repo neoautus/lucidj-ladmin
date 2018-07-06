@@ -18,11 +18,10 @@
 SCRIPTDIR="$( cd "$(dirname "$0")" ; pwd -P )"
 SCRIPT="$(basename "$0")"
 SCRIPTPATH="$SCRIPTDIR/$SCRIPT"
-OS_TYPE="$(uname -s)"
 
 java=java
 if [ -n "$JAVA_HOME" ]; then
-	java="$JAVA_HOME/bin/java"
+    java="$JAVA_HOME/bin/java"
 elif [ ! -e "$(which java)" ]; then
     java="$(which java)"
 elif [ -e "$SCRIPTDIR/../jdk/bin/java" ]; then
