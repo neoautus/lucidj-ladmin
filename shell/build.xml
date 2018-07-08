@@ -23,16 +23,9 @@
 
     <target name="getlibs" depends="configure.getlibs">
 
-        <resolvePath id="shell/libs">
-            <dependency org="org.jline" name="jline" rev="3.5.1" transitive="false"/>
-            <dependency org="org.fusesource.jansi" name="jansi" rev="1.16" transitive="false"/>
-        </resolvePath>
-
-        <getDependency group="shell/adminutil"
-            org="org.lucidj.admind" name="org.lucidj.admind.adminutil" rev="1.0.0"/>
-
-        <path id="shell/adminutil">
-            <fileset dir="${libcache.dir}" includes="shell/adminutil/**/*.jar"/>
+        <path id="project-libs">
+            <fileset dir="${artifacts.dir}" includes="libraries/**/*.jar"/>
+            <fileset dir="${artifacts.dir}" includes="shared/**/*.jar"/>
         </path>
 
     </target>
@@ -45,16 +38,10 @@
                 <attribute name="Main-Class" value="org.lucidj.shell.Shell"/>
             </manifests>
             <classpaths>
-                <path refid="shell/libs"/>
-                <path refid="shell/adminutil"/>
+                <path refid="project-libs"/>
             </classpaths>
-            <addjar>
-                <zipgroupfileset dir="${libcache.dir}" includes="shell/adminutil/**/*.jar"/>
-            </addjar>
         </build.classic.jar>
 
-        <artifact file="${libcache.dir}/shell/libs/jar/jansi-1.16.jar" group="libraries"/>
-        <artifact file="${libcache.dir}/shell/libs/jar/jline-3.5.1.jar" group="libraries"/>
         <artifact file="${dist.jar}" group="commands"/>
 
     </target>

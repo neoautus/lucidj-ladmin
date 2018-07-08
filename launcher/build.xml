@@ -28,13 +28,6 @@
             <fileset dir="${artifacts.dir}" includes="shared/**/*.jar"/>
         </path>
 
-        <getDependency group="launcher-ext"
-            org="org.lucidj.admind" name="org.lucidj.admind.adminutil" rev="1.0.0"/>
-
-        <path id="launcher-ext">
-            <fileset dir="${libcache.dir}" includes="launcher-ext/**/*.jar"/>
-        </path>
-
     </target>
 
     <target name="build-module" depends="init">
@@ -45,11 +38,7 @@
             </manifests>
             <classpaths>
                 <path refid="project-libs"/>
-                <path refid="launcher-ext"/>
             </classpaths>
-            <addjar>
-                <zipgroupfileset dir="${libcache.dir}" includes="launcher-ext/**/*.jar"/>
-            </addjar>
         </build.classic.jar>
 
         <artifact file="${dist.jar}" group="commands"/>

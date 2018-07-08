@@ -18,8 +18,10 @@
 
     <import file="configure.xml"/>
 
-    <target name="build-libladmin">
+    <target name="build-libraries">
+        <subant buildpath="${basedir}/libraries"/>
         <subant buildpath="${basedir}/libladmin"/>
+        <subant buildpath="${basedir}/3rdparty"/>
     </target>
 
     <target name="build-main">
@@ -30,7 +32,7 @@
     </target>
 
     <target name="build-all">
-        <antcall target="build-libladmin"/>
+        <antcall target="build-libraries"/>
         <iterate target="build-module"/>
         <antcall target="build-main"/>
     </target>

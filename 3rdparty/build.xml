@@ -14,7 +14,7 @@
    License for the specific language governing permissions and limitations under
    the License.
 -->
-<project name="3rdparty" default="build-module">
+<project name="3rdparty" default="build-3rdparty">
 
     <import>
         <fileset dir="${basedir}" includes="configure.xml"/>
@@ -26,6 +26,10 @@
     <property name="build.name" value="build"/>
 
     <target name="build-module">
+        <!-- 3rdparty is not a module -->
+    </target>
+
+    <target name="build-3rdparty">
         <subant buildpath="${browserlauncher2.dir}" target="deploy">
             <property name="output.dir" value="${build.name}"/>
             <property name="deployment.dir" value="${dist.name}"/>

@@ -1,0 +1,53 @@
+<?xml version="1.0"?>
+<!--
+   Copyright 2018 NEOautus Ltd. (http://neoautus.com)
+
+   Licensed under the Apache License, Version 2.0 (the "License"); you may not
+   use this file except in compliance with the License. You may obtain a copy of
+   the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+   WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+   License for the specific language governing permissions and limitations under
+   the License.
+-->
+<project name="libraries" default="build-libraries">
+
+    <import>
+        <fileset dir="${basedir}" includes="configure.xml"/>
+        <fileset dir=".." includes="configure.xml"/>
+    </import>
+
+    <target name="getlibs" depends="configure.getlibs">
+
+        <property name="jline.rev" value="3.5.1"/><!-- 3.8.0 -->
+        <property name="jansi.rev" value="1.16"/><!-- 1.17.1 -->
+
+        <resolvePath id="project/libs">
+            <dependency org="org.jline" name="jline" rev="${jline.rev}" transitive="false"/>
+            <dependency org="org.fusesource.jansi" name="jansi" rev="${jansi.rev}" transitive="false"/>
+            <dependency org="org.apache.commons" name="commons-exec" rev="1.3"/>
+        </resolvePath>
+
+        <getDependency group="project/adminutil" outfileProperty="adminutil.jar"
+            org="org.lucidj.admind" name="org.lucidj.admind.adminutil" rev="1.0.0"/>
+
+    </target>
+
+    <target name="build-module">
+        <!-- libraries is not a module -->
+    </target>
+
+    <target name="build-libraries" depends="init">
+
+        <artifact file="${libcache.dir}/project/libs/jar/jline-${jline.rev}.jar" group="libraries"/>
+        <artifact file="${libcache.dir}/project/libs/jar/jansi-${jansi.rev}.jar" group="libraries"/>
+        <artifact file="${libcache.dir}/project/libs/jar/commons-exec-1.3.jar" group="libraries"/>
+        <artifact file="${adminutil.jar}" group="libraries"/>
+
+    </target>
+
+</project>
