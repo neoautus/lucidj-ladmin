@@ -32,11 +32,16 @@ public class Stop
         }
 
         String request = AdmindUtil.asyncInvoke ("shutdown", "true");
+        int status = AdmindUtil.asyncWait (request);
 
-        if (AdmindUtil.asyncWait (request))
+        if (status == AdmindUtil.ASYNC_READY)
         {
             String response = AdmindUtil.asyncResponse (request);
             System.out.println ("Shutdown '" + def_server_name + "': " + response.trim ());
+        }
+        else if (status == AdmindUtil.ASYNC_GONE)
+        {
+            System.out.println ("Server '" + def_server_name + "' is gone");
         }
         else
         {

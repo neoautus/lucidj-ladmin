@@ -98,8 +98,13 @@ public class Shell
         }
 
         final String request = AdmindUtil.asyncInvoke ("shell", "true");
+        int status = AdmindUtil.asyncWait (request, 5000, AdmindUtil.ASYNC_RUNNING);
 
-        if (!AdmindUtil.asyncWait (request, 5000, AdmindUtil.ASYNC_RUNNING))
+        if (status == AdmindUtil.ASYNC_GONE)
+        {
+            System.out.println ("Server '" + def_server_name + "' is gone");
+        }
+        else if (status == AdmindUtil.ASYNC_ERROR)
         {
             String error = AdmindUtil.asyncError (request);
             System.out.println ("Error opening console for '" + def_server_name + "': " + error);
