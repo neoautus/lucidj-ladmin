@@ -14,7 +14,7 @@
  * the License.
  */
 
-package org.lucidj.ladmin.launcher;
+package org.lucidj.ladmin.commands;
 
 import org.lucidj.ext.admind.AdmindUtil;
 

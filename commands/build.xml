@@ -14,7 +14,7 @@
    License for the specific language governing permissions and limitations under
    the License.
 -->
-<project name="launcher" default="build-module">
+<project name="commands" default="build-module">
 
     <import>
         <fileset dir="${basedir}" includes="configure.xml"/>
@@ -32,10 +32,7 @@
 
     <target name="build-module" depends="init">
 
-        <build.classic.jar name="launcher" outfileProperty="dist.jar">
-            <manifests>
-                <attribute name="Main-Class" value="org.lucidj.ladmin.launcher.Start"/>
-            </manifests>
+        <build.classic.jar name="commands" outfileProperty="dist.jar">
             <classpaths>
                 <path refid="project-libs"/>
             </classpaths>
