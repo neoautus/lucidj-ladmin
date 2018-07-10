@@ -16,7 +16,7 @@
 
 package org.lucidj.ladmin.commands;
 
-import org.lucidj.ext.admind.AdmindUtil;
+import org.lucidj.admind.shared.AdmindUtil;
 import org.lucidj.libladmin.JdkLocator;
 import org.lucidj.libladmin.Launcher;
 import org.lucidj.libladmin.shared.FrameworkLocator;

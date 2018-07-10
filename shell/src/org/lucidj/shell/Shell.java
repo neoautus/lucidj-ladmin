@@ -21,7 +21,7 @@ import org.jline.terminal.Terminal;
 import org.jline.terminal.TerminalBuilder;
 import org.jline.utils.AttributedStringBuilder;
 import org.jline.utils.AttributedStyle;
-import org.lucidj.ext.admind.AdmindUtil;
+import org.lucidj.admind.shared.AdmindUtil;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;

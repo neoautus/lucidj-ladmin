@@ -16,7 +16,7 @@
 
 package org.lucidj.ladmin.commands;
 
-import org.lucidj.ext.admind.AdmindUtil;
+import org.lucidj.admind.shared.AdmindUtil;
 
 public class Jmx
 {
@@ -31,9 +31,7 @@ public class Jmx
             System.exit (1);
         }
 
-        String params = (args.length == 0)? "/": String.join ("/", args);
-
-        String request = AdmindUtil.asyncInvoke ("jmx", params);
+        String request = AdmindUtil.asyncInvoke ("jmx", AdmindUtil.encodeArgs (args));
         int status = AdmindUtil.asyncWait (request);
 
         if (status == AdmindUtil.ASYNC_READY)
