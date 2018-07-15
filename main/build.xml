@@ -34,10 +34,79 @@
         <!-- Main isn't a module -->
     </target>
 
+    <target name="get-launch4j" unless="launch4j.available">
+
+        <property name="launch4j.version" value="3.9"/>
+        <property name="launch4j.dist.url"
+            value="http://downloads.sourceforge.net/project/launch4j/launch4j-3/${launch4j.version}/launch4j-${launch4j.version}-linux.tgz"/>
+        <property name="launch4j.cache.dir" value="${cache.dir}/launch4j-${launch4j.version}"/>
+        <property name="launch4j.dist.file" value="${launch4j.cache.dir}/launch4j-${launch4j.version}-linux.tgz"/>
+        <mkdir dir="${launch4j.cache.dir}"/>
+
+        <get src="${launch4j.dist.url}" dest="${launch4j.cache.dir}/download.tmp" verbose="true"/>
+        <gunzip src="${launch4j.cache.dir}/download.tmp" dest="${launch4j.dist.file}"/>
+
+        <delete dir="${launch4j.dist.dir}"/>
+        <mkdir dir="${launch4j.dist.dir}"/>
+
+        <untar src="${launch4j.dist.file}" dest="${launch4j.dist.dir}">
+            <cutdirsmapper dirs="2"/>
+        </untar>
+        <chmod file="${launch4j.dist.dir}/bin/ld" perm="u+x"/>
+        <chmod file="${launch4j.dist.dir}/bin/windres" perm="u+x"/>
+
+    </target>
+
+    <!-- We don't try to use launch4j on uncompatible platoforms -->
+    <condition property="blacklisted.platform">
+        <or>
+            <os family="unix" arch="arm"/>
+        </or>
+    </condition>
+
+    <target name="build-exe" unless="blacklisted.platform">
+
+        <property name="launch4j.dist.dir" value="${cache.dir}/launch4j"/>
+        <condition property="launch4j.available">
+            <available file="${launch4j.dist.dir}/launch4j.jar"/>
+        </condition>
+
+        <antcall target="get-launch4j"/>
+
+        <taskdef name="launch4j" classname="net.sf.launch4j.ant.Launch4jTask">
+            <classpath>
+                <fileset dir="${launch4j.dist.dir}">
+                    <include name="launch4j.jar"/>
+                </fileset>
+            </classpath>
+        </taskdef>
+
+        <!-- TODO: ALLOW IGNORING BUILD IF 32BIT ELF SUPPORT ISN'T ENABLED (windres exec) -->
+        <launch4j>
+            <config
+                dontWrapJar="false"
+                stayAlive="true"
+                headerType="gui"
+                jar="${dist.jar}"
+                outfile="${fancy-launcher}.exe"
+                downloadUrl="http://www.azul.com/downloads/zulu"
+                icon="${basedir}/resources/ladmin.ico">
+                <jre
+                    path="../jdk"
+                    bundledJre64Bit="true"
+                    bundledJreAsFallback="true"
+                    minVersion="1.8.0"
+                    jdkPreference="preferJdk"
+                    runtimeBits="64"/>
+            </config>
+        </launch4j>
+
+    </target>
+
     <target name="build-main" depends="init">
 
         <property name="main-class" value="org.lucidj.ladmin.main.Main"/>
-        <property name="revision" value="1.0-rc2"/>
+        <property name="revision" value="1.0-rc3"/>
 
         <property name="src.dir" value="${basedir}/src"/>
         <property name="main.classes.dir" value="${build.dir}/main"/>
@@ -81,7 +150,10 @@
         </concat>
         <chmod file="${fancy-launcher}" perm="a+x"/>
 
-        <copy file="${basedir}/resources/ladmin.png" todir="${packaging.dir}"/>
+        <antcall target="build-exe"/>
+
+        <!-- Renamed png icon file to make it distinct from ladmin.exe without extension -->
+        <copy file="${basedir}/resources/ladmin-icon.png" todir="${packaging.dir}"/>
 
         <!-- ================================ -->
         <!-- Create the distribution packages -->

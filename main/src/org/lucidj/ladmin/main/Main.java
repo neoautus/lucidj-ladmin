@@ -19,6 +19,7 @@ package org.lucidj.ladmin.main;
 import org.lucidj.libladmin.shared.FrameworkLocator;
 import org.lucidj.libladmin.shared.TinyLog;
 
+import java.awt.GraphicsEnvironment;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
@@ -29,7 +30,12 @@ import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.jar.Attributes;
 import java.util.jar.JarEntry;
@@ -48,6 +54,8 @@ public class Main
     private static List<URL> jar_commands_list;
     private static URL command_jar_url;
     private static String command_main_class;
+
+    private final static boolean RUNNING_ON_WINDOWS = System.getProperty ("os.name").startsWith ("Win");
 
     static
     {
@@ -389,11 +397,27 @@ public class Main
             String root_filename = root_jar_url.getFile ();
             String prog_name = root_filename.substring (root_filename.lastIndexOf ('/') + 1);
 
+            // No args anyway
+            command_args = args;
+
+            // Strip .exe if needed
+            if (RUNNING_ON_WINDOWS)
+            {
+                if (prog_name.substring (prog_name.length () - 4).equalsIgnoreCase (".exe"))
+                {
+                    prog_name = prog_name.substring (0, prog_name.length () - 4);
+                }
+            }
+
             if (!prog_name.equals (DEFAULT_PROG_NAME))
             {
                 // The program name is not the default, use it as a command
                 command = prog_name;
-                command_args = args;
+            }
+            else if (!GraphicsEnvironment.isHeadless () || RUNNING_ON_WINDOWS)
+            {
+                // We should have a GUI available
+                command = "gui";
             }
             else
             {
