@@ -37,7 +37,7 @@ public class Jmx
         if (status == AdmindUtil.ASYNC_READY)
         {
             String response = AdmindUtil.asyncResponse (request);
-            System.out.println (response.trim ());
+            System.out.println (response);
         }
         else if (status == AdmindUtil.ASYNC_GONE)
         {
