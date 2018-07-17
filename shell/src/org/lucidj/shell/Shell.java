@@ -45,6 +45,31 @@ public class Shell
 
     private static byte[] buffer = new byte [8192];
 
+    // A small circular buffer
+    private static int[] reader_buf = new int [64];
+    private static volatile int reader_in = 0;
+    private static volatile int reader_out = 0;
+
+    private static boolean terminal_ready ()
+    {
+        return (reader_in != reader_out);
+    }
+
+    private static int terminal_read ()
+    {
+        int ch;
+        int next = reader_out + 1;
+
+        if (next == reader_buf.length)
+        {
+            next = 0;
+        }
+
+        ch = reader_buf [reader_out];
+        reader_out = next;
+        return (ch);
+    }
+
     private static void send_terminal_size ()
     {
         try
@@ -185,6 +210,44 @@ public class Shell
             OutputStream terminal_out = terminal.output ();
             saved_attributes = terminal.enterRawMode ();
 
+            // Since jline 3.6.0 NonblockingReader.available() became return (0),
+            // and we have ready() only on some impls. We could use just read(timeout),
+            // but then we would need to handle VTIME (at least 100ms pauses every now
+            // and then). And I thought could forget about ioctl() using Java.... :)
+            Thread blocking_reader = new Thread (new Runnable ()
+            {
+                @Override
+                public void run ()
+                {
+                    while (!Thread.currentThread ().isInterrupted ())
+                    {
+                        // A simple circular buffer which reads until full
+                        int next = reader_in + 1;
+
+                        if (next == reader_buf.length)
+                        {
+                            next = 0;
+                        }
+
+                        if (next != reader_out)
+                        {
+                            try
+                            {
+                                reader_buf [reader_in] = terminal_in.read ();
+                            }
+                            catch (IOException bye)
+                            {
+                                reader_buf [reader_in] = -1;
+                            }
+                            reader_in = next;
+                        }
+                    }
+                }
+            });
+            blocking_reader.setName ("Terminal reader helper");
+            blocking_reader.setDaemon (true);
+            blocking_reader.start ();
+
             // Init terminal information
             send_terminal_type ();
             send_terminal_size ();
@@ -249,9 +312,9 @@ public class Shell
                     terminal_out.write (buffer, 0, bytes_exchanged);
                 }
 
-                if (terminal_in.ready ())
+                if (terminal_ready ())
                 {
-                    int ch = terminal_in.read ();
+                    int ch = terminal_read ();
 
                     if (ch >= 0)
                     {

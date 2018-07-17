@@ -23,8 +23,8 @@
 
     <target name="getlibs" depends="configure.getlibs">
 
-        <property name="jline.rev" value="3.5.1"/><!-- 3.8.0 -->
-        <property name="jansi.rev" value="1.16"/><!-- 1.17.1 -->
+        <property name="jline.rev" value="3.8.1"/>
+        <property name="jansi.rev" value="1.17.1"/>
 
         <resolvePath id="project/libs">
             <dependency org="org.jline" name="jline" rev="${jline.rev}" transitive="false"/>
