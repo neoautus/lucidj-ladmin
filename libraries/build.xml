@@ -33,7 +33,7 @@
         </resolvePath>
 
         <getDependency group="project/adminutil" outfileProperty="adminutil.jar"
-            org="org.lucidj.admind" name="org.lucidj.admind.adminutil" rev="1.0.0"/>
+            org="org.lucidj.admind" name="org.lucidj.admind.adminutil" rev="1.1.0"/>
 
     </target>
 
