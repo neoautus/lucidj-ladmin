@@ -106,7 +106,7 @@
     <target name="build-main" depends="init">
 
         <property name="main-class" value="org.lucidj.ladmin.main.Main"/>
-        <property name="revision" value="1.0-rc3"/>
+        <property name="revision" value="1.0.0"/>
 
         <property name="src.dir" value="${basedir}/src"/>
         <property name="main.classes.dir" value="${build.dir}/main"/>
