@@ -53,10 +53,63 @@ public class Tail
     private static boolean logout_terminal;
 
     private static DataInputStream remote_in;
+    private static boolean line_was_incomplete;
+    private static String incomplete_line;
 
     private static void println (String message, int ansi_colors)
     {
         terminal.writer ().println (Ansify.toAnsi (message, ansi_colors));
+        terminal.flush ();
+    }
+
+    private static void filter_lines (byte[] tailbuf, int size)
+    {
+        int start_pos, lf_pos;
+
+        for (start_pos = 0; start_pos < size; )
+        {
+            for (lf_pos = start_pos; lf_pos < size; )
+            {
+                if (tailbuf [lf_pos++] == '\n')
+                {
+                    break;
+                }
+            }
+
+            String extracted_line = new String (tailbuf, start_pos, lf_pos - start_pos);
+            start_pos = lf_pos;
+
+            if (line_was_incomplete)
+            {
+                // Prepends the previous line segment which was incomplete (without LF)
+                extracted_line = incomplete_line + extracted_line;
+            }
+
+            if (tailbuf [lf_pos - 1] != '\n')
+            {
+                incomplete_line = extracted_line;
+                line_was_incomplete = true;
+                continue;
+            }
+
+            // At this point we have only full lines terminated with LF
+            line_was_incomplete = false;
+            int line_attributes = INFO_COLORS;
+
+            if (extracted_line.contains ("DEBUG"))
+            {
+                line_attributes = DEBUG_COLORS;
+            }
+            else if (extracted_line.contains ("ERROR"))
+            {
+                line_attributes = ERROR_COLORS;
+            }
+            else if (extracted_line.contains ("WARN"))
+            {
+                line_attributes = WARN_COLORS;
+            }
+            terminal.writer ().print (Ansify.toAnsi (extracted_line, line_attributes));
+        }
         terminal.flush ();
     }
 
@@ -218,7 +271,7 @@ public class Tail
 
                     if (bytes_exchanged > 0)
                     {
-                        terminal_out.write (buffer, 0, bytes_exchanged);
+                        filter_lines (buffer, bytes_exchanged);
                         silence_on_the_library = System.currentTimeMillis ();
                     }
                 }
