@@ -43,6 +43,7 @@ public class Tail
 
     private static String admind;
     private static Properties admind_properties;
+    private static boolean starting_message;
 
     private static String system_log;
     private static long system_log_inode;
@@ -194,6 +195,16 @@ public class Tail
                     }
                 }
 
+                // Starting without available server
+                if (starting_message == false)
+                {
+                    if (admind == null && valid_admind == null)
+                    {
+                        println ("Waiting for '" + def_server_name + "'...", TAIL_COLORS);
+                    }
+                    starting_message = true;
+                }
+
                 // Rising edge
                 if (admind == null && valid_admind != null)
                 {
@@ -311,7 +322,10 @@ public class Tail
 
                 try
                 {
-                    remote_in.close ();
+                    if (remote_in != null)
+                    {
+                        remote_in.close ();
+                    }
                 }
                 catch (IOException ignore) {};
             }
